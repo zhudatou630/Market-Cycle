@@ -6,6 +6,9 @@ __pycache__/
 .ipynb_checkpoints/
 .pi-subagents/
 
+# Private conversation and research reference archive
+docs/references/
+
 # Local datasets and generated research outputs
 data/raw/*
 !data/raw/.gitkeep

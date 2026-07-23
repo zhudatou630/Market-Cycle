@@ -10,10 +10,8 @@ owner: brooks-candidates
 ## 1. 文档定位
 
 本文保存历史研究对话中提出的 Brooks Market Cycle 公式和结构化候选，避免后续
-研究从空白重新发明定义。公式主要来自归档的
-[对话 10](references/ChatGPT-O%20Neil%20%26%20Brooks%20Market%20Cycle.md#对话-10)、
-[对话 15](references/ChatGPT-O%20Neil%20%26%20Brooks%20Market%20Cycle.md#对话-15)
-和 [对话 16](references/ChatGPT-O%20Neil%20%26%20Brooks%20Market%20Cycle.md#对话-16)。
+研究从空白重新发明定义。公式主要来自本地私有归档中的对话 10、对话 15 和对话
+16。归档文件位于 `docs/references/`，不提交到公开仓库。
 
 本文不是公式规范。公式来自历史 AI 研究提案，未经本项目实证验证；保留原式不
 表示接受其变量、权重、阈值或概率解释。正式实验仍由

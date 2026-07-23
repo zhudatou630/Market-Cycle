@@ -81,8 +81,8 @@ owner: project-decisions
 
 - **日期**：2026-07-22
 - **状态**：`CONFIRMED`
-- **决定**：`docs/references/ChatGPT-O Neil & Brooks Market Cycle.md` 保留原文，
-  但不再作为默认阅读或当前规范。概念以 `docs/foundation.md` 为准，研究状态以
+- **决定**：原始对话在本地 `docs/references/` 保留，但不提交到公开仓库；它不再
+  作为默认阅读或当前规范。概念以 `docs/foundation.md` 为准，研究状态以
   `docs/research-plan.md` 为准，确认选择以本文为准。
 - **理由**：原文包含 19 轮演化、重复问答、示例、相互修订和大量 AI 提案；整体
   阅读成本高，也容易把早期建议误当成最终决策。

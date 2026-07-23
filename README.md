@@ -41,8 +41,8 @@ weekly = get_bars("SPX", freq="W")
 - [Brooks 测量候选](docs/brooks-measurement-candidates.md)：原研究公式及其数据、
   时点和前视风险说明。
 - [决策记录](docs/decisions.md)：已经确认的项目选择。
-- [原始对话归档](docs/references/ChatGPT-O%20Neil%20%26%20Brooks%20Market%20Cycle.md)：
-  只用于历史溯源，不是当前规范。
+- 原始对话归档：本地私有文件 `docs/references/`，不提交到公开仓库；只用于历史
+  溯源，不是当前规范。
 
 ## 研究边界
 

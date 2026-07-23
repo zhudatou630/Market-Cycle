@@ -495,13 +495,13 @@ O'Neil/IBD 关于 FTD、派发和历史牛市的许多统计来自机构内部�
 
 | 主题 | 主要来源 |
 |---|---|
-| O'Neil FTD 与 M | [对话 01-04](references/ChatGPT-O%20Neil%20%26%20Brooks%20Market%20Cycle.md#对话-01) |
-| O'Neil 的系统定位与外部项目 | [对话 05-07](references/ChatGPT-O%20Neil%20%26%20Brooks%20Market%20Cycle.md#对话-05) |
-| 动态市场观与技术分析认识论 | [对话 08-09](references/ChatGPT-O%20Neil%20%26%20Brooks%20Market%20Cycle.md#对话-08) |
-| Brooks Market Cycle 与递归更新 | [对话 10-12](references/ChatGPT-O%20Neil%20%26%20Brooks%20Market%20Cycle.md#对话-10) |
-| 总体架构和两套体系边界 | [对话 13-14](references/ChatGPT-O%20Neil%20%26%20Brooks%20Market%20Cycle.md#对话-13) |
-| 机器刻画、路径骨架及其修正 | [对话 15-16](references/ChatGPT-O%20Neil%20%26%20Brooks%20Market%20Cycle.md#对话-15) |
-| 横截面融合与阶段路线 | [对话 17-19](references/ChatGPT-O%20Neil%20%26%20Brooks%20Market%20Cycle.md#对话-17) |
+| O'Neil FTD 与 M | 对话 01-04（本地私有归档） |
+| O'Neil 的系统定位与外部项目 | 对话 05-07（本地私有归档） |
+| 动态市场观与技术分析认识论 | 对话 08-09（本地私有归档） |
+| Brooks Market Cycle 与递归更新 | 对话 10-12（本地私有归档） |
+| 总体架构和两套体系边界 | 对话 13-14（本地私有归档） |
+| 机器刻画、路径骨架及其修正 | 对话 15-16（本地私有归档） |
+| 横截面融合与阶段路线 | 对话 17-19（本地私有归档） |
 
 外部资料应回到原始来源复核。历史对话中的链接是检索线索，不自动继承为本文的
 事实依据。
