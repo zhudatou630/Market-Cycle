@@ -4,6 +4,8 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .ipynb_checkpoints/
+# Pi local state, prompts, and agent run artifacts
+.pi/
 .pi-subagents/
 
 # Private conversation and research reference archive
