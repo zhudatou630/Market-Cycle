@@ -1,0 +1,26 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+.pi-subagents/
+
+# Local datasets and generated research outputs
+data/raw/*
+!data/raw/.gitkeep
+*.parquet
+results/
+reports/
+outputs/
+
+# Local configuration and runtime files
+.env
+.env.*
+!.env.example
+*.log
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
