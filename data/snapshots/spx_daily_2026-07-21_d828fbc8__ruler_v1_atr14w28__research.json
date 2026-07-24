@@ -1,0 +1,28 @@
+{
+  "artifact_id": "spx_daily_2026-07-21_d828fbc8__ruler_v1_atr14w28__research",
+  "kind": "research_bars",
+  "created_at_utc": "2026-07-24T09:12:03Z",
+  "snapshot_id": "spx_daily_2026-07-21_d828fbc8",
+  "source_snapshot_sha256": "d828fbc8a85d70a4de240b67de66e88d8b09767622a20743a04236f896373e9d",
+  "sample_id": "spx_ohlc_main_1984",
+  "ruler_id": "ruler_v1_atr14w28",
+  "ohlc_clean_start": "1984-01-03",
+  "research_start": "1984-02-10",
+  "research_end": "2026-07-21",
+  "atr_n": 14,
+  "atr_warmup_tr_bars": 28,
+  "rows": 10692,
+  "columns": [
+    "date",
+    "open",
+    "high",
+    "low",
+    "close",
+    "tr_pct",
+    "atr_pct_14"
+  ],
+  "path": "/home/zhujunshen/Quant/04-Market Cycle/data/snapshots/spx_daily_2026-07-21_d828fbc8__ruler_v1_atr14w28__research.parquet",
+  "sha256": "7363701729475067c013c5082a916b90acf77f5136ff5800f436fd5b9bf4a509",
+  "byte_size": 607501,
+  "notes": "Daily research table: OHLC + ruler columns at the same row level. Regenerate with write_research_bars(); do not hand-edit."
+}

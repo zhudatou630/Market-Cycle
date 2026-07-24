@@ -10,8 +10,10 @@ O'Neil M、个股横截面和交易决策属于后续阶段。
 
 ## 当前状态
 
-项目当前处于数据质量边界收口和 Brooks Phase 1A 准备阶段。下一步是冻结数据快照、
-写研究协议，然后实现基础行为测量和少量路径事件；尚未实现状态引擎或交易系统。
+Phase 0 已收口；Phase 1A 尺子已实现。研究快照
+`spx_daily_2026-07-21_d828fbc8`，主样本 `spx_ohlc_main_1984`（研究行
+1984-02-10 起，含 `tr_pct` / `atr_pct_14`），见质量报告与 D-010。下一步是
+工作协议与测量模块（路径效率等）；尚未实现状态引擎或交易系统。
 
 ## 快速开始
 
@@ -23,15 +25,18 @@ python -m venv .venv
 读取或首次下载 SPX 日线数据：
 
 ```python
-from market_cycle.data.bars import get_bars
+from market_cycle.data import get_bars, get_research_bars
 
 daily = get_bars("^GSPC")
 weekly = get_bars("SPX", freq="W")
+
+# Phase 1A 研究入口：快照 + 尺子，齐套日起无空头
+bars, meta = get_research_bars()
 ```
 
-首次运行或执行 `refresh=True` 需要网络访问 Yahoo Finance。数据保存在本地
-`data/raw/spx_daily.parquet`，该文件是缓存，不提交到 Git；正式研究应自行记录
-数据文件哈希、抓取截止日和质量规则。
+首次运行或执行 `refresh=True` 需要网络访问 Yahoo Finance。工作缓存为
+`data/raw/spx_daily.parquet`（可覆盖，默认不提交）。正式研究钉住
+`data/snapshots/` 与 `snapshot_id`，波动尺见 D-010。
 
 ## 文档入口
 
@@ -41,6 +46,8 @@ weekly = get_bars("SPX", freq="W")
 - [Brooks 测量候选](docs/brooks-measurement-candidates.md)：原研究公式及其数据、
   时点和前视风险说明。
 - [决策记录](docs/decisions.md)：已经确认的项目选择。
+- [Phase 0 数据质量报告](docs/reports/phase0-data-quality.md)：快照、主样本与
+  资格规则。
 - 原始对话归档：本地私有文件 `docs/references/`，不提交到公开仓库；只用于历史
   溯源，不是当前规范。
 

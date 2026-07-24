@@ -8,6 +8,9 @@ __pycache__/
 .pi/
 .pi-subagents/
 
+# Local agent instructions (not project source of truth for git)
+AGENTS.md
+
 # Private conversation and research reference archive
 docs/references/
 
@@ -15,9 +18,13 @@ docs/references/
 data/raw/*
 !data/raw/.gitkeep
 *.parquet
+# Research-pinned immutable snapshots are versioned with the repo
+!data/snapshots/
+!data/snapshots/**/*.parquet
+!data/snapshots/**/*.json
 results/
-reports/
-outputs/
+/reports/
+/outputs/
 
 # Local configuration and runtime files
 .env

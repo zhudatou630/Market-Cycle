@@ -1,0 +1,43 @@
+{
+  "snapshot_id": "spx_daily_2026-07-21_d828fbc8",
+  "created_at_utc": "2026-07-23T09:22:33Z",
+  "source_cache": "data/raw/spx_daily.parquet",
+  "snapshot_path": "data/snapshots/spx_daily_2026-07-21_d828fbc8.parquet",
+  "symbol": "^GSPC",
+  "frequency": "daily",
+  "columns": [
+    "date",
+    "open",
+    "high",
+    "low",
+    "close"
+  ],
+  "rows": 24754,
+  "date_start": "1927-12-30",
+  "date_end": "2026-07-21",
+  "sha256": "d828fbc8a85d70a4de240b67de66e88d8b09767622a20743a04236f896373e9d",
+  "byte_size": 771444,
+  "fetch_notes": {
+    "provider": "yfinance",
+    "yahoo_symbol": "^GSPC",
+    "auto_adjust": false,
+    "actions": false,
+    "cache_policy": "D-002 single parquet working cache; this snapshot is immutable research pin"
+  },
+  "quality_summary": {
+    "duplicate_dates": 0,
+    "null_ohlc": 0,
+    "zero_range_bars": 8547,
+    "degenerate_ohlc_bars": 8547,
+    "pre_1962_rows": 8509,
+    "post_1961_zero_range_bars": 38,
+    "last_zero_range_date": "1983-06-30",
+    "rows_from_1984": 10720,
+    "zero_range_from_1984": 0,
+    "main_sample_start": "1984-01-03",
+    "main_sample_rows": 10720,
+    "main_sample_date_start": "1984-01-03",
+    "main_sample_date_end": "2026-07-21"
+  },
+  "immutability": "Do not overwrite this file. New fetches create a new snapshot id."
+}

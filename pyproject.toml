@@ -11,6 +11,12 @@ dependencies = [
   "yfinance>=0.2.40",
   "pandas>=2.0",
   "pyarrow>=14.0",
+  "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
 ]
 
 [tool.setuptools.packages.find]
