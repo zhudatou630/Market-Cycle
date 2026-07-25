@@ -8,16 +8,13 @@
   </head>
   <body>
     <main class="app-shell">
-      <header class="topbar">
-        <div class="title-block">
-          <p class="eyebrow">SPX / Phase 1A</p>
+      <header class="chrome" aria-label="顶部工具栏">
+        <div class="chrome-left">
           <h1>连续行为审计</h1>
+          <div class="dataset-meta" id="dataset-meta" aria-live="polite"></div>
         </div>
-        <div class="dataset-meta" id="dataset-meta" aria-live="polite"></div>
-      </header>
 
-      <section class="control-band" aria-label="回放控制">
-        <div class="control-group" aria-label="时间导航">
+        <div class="chrome-controls" aria-label="回放控制">
           <div class="playback-controls">
             <button class="icon-button" id="previous-button" type="button" title="前一个交易日（左方向键）" aria-label="前一个交易日">
               <i data-lucide="chevron-left" aria-hidden="true"></i>
@@ -41,69 +38,64 @@
             <button type="button" data-range-bars="252" aria-pressed="true">1Y</button>
             <button type="button" data-range-bars="756">3Y</button>
           </div>
-        </div>
 
-        <span class="control-divider" aria-hidden="true"></span>
+          <span class="control-divider" aria-hidden="true"></span>
 
-        <div class="control-group scale-group" aria-label="价格轴尺度">
-          <span class="control-label">价格轴</span>
           <div class="segmented-control" aria-label="价格轴尺度">
             <button type="button" data-price-scale="log" aria-pressed="true">Log</button>
-            <button type="button" data-price-scale="linear">Linear</button>
+            <button type="button" data-price-scale="linear">Lin</button>
           </div>
-        </div>
 
-        <span class="control-divider" aria-hidden="true"></span>
-
-        <div class="control-group scale-group" aria-label="指标轴尺度">
-          <span class="control-label">指标轴</span>
-          <div class="segmented-control" aria-label="指标轴尺度">
+          <div class="segmented-control" aria-label="效率与双向性轴尺度">
             <button type="button" data-indicator-scale="auto" aria-pressed="true">Auto</button>
             <button type="button" data-indicator-scale="fixed">0-1</button>
           </div>
+
+          <button class="icon-button" id="snapshot-toggle" type="button" title="折叠/展开快照栏" aria-label="折叠快照栏" aria-pressed="true">
+            <i data-lucide="panel-right" aria-hidden="true"></i>
+          </button>
         </div>
-      </section>
+      </header>
 
       <section class="workspace" aria-label="连续行为图表">
-        <div class="chart-stack">
-          <section class="chart-panel price-panel" aria-labelledby="price-heading">
-            <div class="panel-heading">
-              <div>
-                <p class="panel-kicker">基础价格过程</p>
-                <h2 id="price-heading">SPX 日线</h2>
-              </div>
-              <span class="as-of-readout" id="as-of-readout"></span>
-            </div>
-            <div class="chart-frame" id="price-frame">
+        <div class="chart-board">
+          <section class="pane price-pane" aria-label="SPX 日线">
+            <div class="pane-chart" id="price-frame">
+              <div class="chart-legend" id="price-legend"></div>
               <div class="chart-surface" id="price-chart"></div>
               <span class="sync-time-marker" id="price-time-marker" aria-hidden="true"></span>
             </div>
           </section>
 
-          <section class="chart-panel efficiency-panel" aria-labelledby="efficiency-heading">
-            <div class="panel-heading panel-heading-compact">
-              <div>
-                <p class="panel-kicker">多尺度连续行为</p>
-                <h2 id="efficiency-heading">OHLC-min 效率</h2>
-              </div>
-              <fieldset class="efficiency-toggles" aria-label="效率窗口显示">
-                <label><input type="checkbox" data-window="5" checked /><span class="swatch efficiency-5"></span>5</label>
-                <label><input type="checkbox" data-window="10" checked /><span class="swatch efficiency-10"></span>10</label>
-                <label><input type="checkbox" data-window="20" checked /><span class="swatch efficiency-20"></span>20</label>
-                <label><input type="checkbox" data-window="55" checked /><span class="swatch efficiency-55"></span>55</label>
-              </fieldset>
-            </div>
-            <div class="chart-frame efficiency-frame" id="efficiency-frame">
+          <section class="pane feature-pane" aria-label="效率 E">
+            <div class="pane-chart" id="efficiency-frame">
+              <div class="chart-legend" id="efficiency-legend" data-feature="efficiency"></div>
               <div class="chart-surface" id="efficiency-chart"></div>
               <span class="sync-time-marker" id="efficiency-time-marker" aria-hidden="true"></span>
             </div>
           </section>
+
+          <section class="pane feature-pane" aria-label="方向 D">
+            <div class="pane-chart" id="direction-frame">
+              <div class="chart-legend" id="direction-legend" data-feature="direction"></div>
+              <div class="chart-surface" id="direction-chart"></div>
+              <span class="sync-time-marker" id="direction-time-marker" aria-hidden="true"></span>
+            </div>
+          </section>
+
+          <section class="pane feature-pane bottom-pane" aria-label="双向性 B">
+            <div class="pane-chart" id="two-sidedness-frame">
+              <div class="chart-legend" id="two-sidedness-legend" data-feature="twoSidedness"></div>
+              <div class="chart-surface" id="two-sidedness-chart"></div>
+              <span class="sync-time-marker" id="two-sidedness-time-marker" aria-hidden="true"></span>
+            </div>
+          </section>
         </div>
 
-        <aside class="snapshot-panel" aria-labelledby="snapshot-heading">
+        <aside class="snapshot-panel" id="snapshot-panel" aria-labelledby="snapshot-heading">
           <div class="snapshot-heading">
-            <p class="panel-kicker">窗口快照</p>
-            <h2 id="snapshot-heading">当前尺度</h2>
+            <h2 id="snapshot-heading">当前读数</h2>
+            <span class="as-of-readout" id="as-of-readout"></span>
           </div>
           <dl class="snapshot-values" id="snapshot-values"></dl>
         </aside>

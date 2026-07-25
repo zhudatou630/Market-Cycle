@@ -13,31 +13,93 @@ import { createIcons, icons } from "lucide";
 const API_URL = "/api/replay.json";
 const DEFAULT_RANGE_BARS = 252;
 const PLAYBACK_INTERVAL_MS = 240;
-const EFFICIENCY_COLORS = {
+const SERIES_COLORS = {
+  equal: "#087f6f",
+  midlong: "#576db5",
   5: "#c4573d",
-  10: "#087f6f",
-  20: "#576db5",
-  55: "#9c711f",
+  10: "#9c711f",
+  20: "#6b5b95",
+  55: "#2f6f8f",
 };
+const SERIES_LABELS = {
+  equal: "等权",
+  midlong: "中长期",
+  5: "5",
+  10: "10",
+  20: "20",
+  55: "55",
+};
+const FEATURES = [
+  {
+    key: "efficiency",
+    payloadKey: "efficiency",
+    fieldPrefix: "efficiency",
+    shortTitle: "E",
+    title: "效率",
+    unitBounded: true,
+    legendId: "efficiency-legend",
+  },
+  {
+    key: "direction",
+    payloadKey: "direction",
+    fieldPrefix: "direction",
+    shortTitle: "D",
+    title: "方向",
+    unitBounded: false,
+    legendId: "direction-legend",
+  },
+  {
+    key: "twoSidedness",
+    payloadKey: "twoSidedness",
+    fieldPrefix: "two_sidedness",
+    shortTitle: "B",
+    title: "双向性",
+    unitBounded: true,
+    legendId: "two-sidedness-legend",
+  },
+];
+const SERIES_KEYS = ["equal", "midlong", "5", "10", "20", "55"];
 const PRICE_SCALE_MODES = { log: PriceScaleMode.Logarithmic, linear: PriceScaleMode.Normal };
 
 const dom = {
   asOfInput: document.querySelector("#as-of-input"),
   asOfReadout: document.querySelector("#as-of-readout"),
   datasetMeta: document.querySelector("#dataset-meta"),
-  efficiencyChecks: [...document.querySelectorAll("[data-window]")],
-  efficiencyFrame: document.querySelector("#efficiency-frame"),
-  efficiencyTimeMarker: document.querySelector("#efficiency-time-marker"),
+  featureFrames: Object.fromEntries(
+    FEATURES.map((feature) => [
+      feature.key,
+      document.querySelector(
+        feature.key === "twoSidedness" ? "#two-sidedness-frame" : `#${feature.key}-frame`,
+      ),
+    ]),
+  ),
+  featureLegends: Object.fromEntries(
+    FEATURES.map((feature) => [feature.key, document.querySelector(`#${feature.legendId}`)]),
+  ),
+  featureTimeMarkers: Object.fromEntries(
+    FEATURES.map((feature) => [
+      feature.key,
+      document.querySelector(
+        feature.key === "twoSidedness"
+          ? "#two-sidedness-time-marker"
+          : `#${feature.key}-time-marker`,
+      ),
+    ]),
+  ),
   indicatorScaleButtons: [...document.querySelectorAll("[data-indicator-scale]")],
   loading: document.querySelector("#loading-state"),
   nextButton: document.querySelector("#next-button"),
   playButton: document.querySelector("#play-button"),
   previousButton: document.querySelector("#previous-button"),
   priceFrame: document.querySelector("#price-frame"),
+  priceLegend: document.querySelector("#price-legend"),
   priceScaleButtons: [...document.querySelectorAll("[data-price-scale]")],
   priceTimeMarker: document.querySelector("#price-time-marker"),
   rangeButtons: [...document.querySelectorAll("[data-range-bars]")],
+  snapshotPanel: document.querySelector("#snapshot-panel"),
+  snapshotToggle: document.querySelector("#snapshot-toggle"),
   snapshotValues: document.querySelector("#snapshot-values"),
+  workspace: document.querySelector(".workspace"),
 };
 
 const state = {
@@ -51,24 +113,38 @@ const state = {
   currentRangeBars: DEFAULT_RANGE_BARS,
   payload: null,
   playbackTimer: null,
-  visibleEfficiency: new Set([5, 10, 20, 55]),
+  snapshotOpen: true,
+  visibleSeries: Object.fromEntries(
+    FEATURES.map((feature) => [feature.key, new Set(["equal", "midlong"])]),
+  ),
 };
 
-function chartOptions() {
+function chartOptions({ timeVisible = false, fontSize = 11 } = {}) {
   return {
     autoSize: true,
     layout: {
       background: { type: ColorType.Solid, color: "#fbfcfb" },
       textColor: "#65716f",
-      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-      fontSize: 11,
+      fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+      fontSize,
+      attributionLogo: false,
     },
     grid: {
-      vertLines: { color: "#edf0ee" },
-      horzLines: { color: "#edf0ee" },
+      vertLines: { color: "#eef2f0" },
+      horzLines: { color: "#eef2f0" },
     },
-    rightPriceScale: { borderColor: "#cfd7d3", minimumWidth: 86 },
-    timeScale: { borderColor: "#cfd7d3", rightOffset: 0 },
+    rightPriceScale: {
+      borderColor: "#d5ddd9",
+      minimumWidth: 58,
+      entireTextOnly: true,
+    },
+    timeScale: {
+      borderColor: "#d5ddd9",
+      rightOffset: 4,
+      visible: timeVisible,
+      timeVisible: false,
+      secondsVisible: false,
+    },
     crosshair: { mode: CrosshairMode.Normal },
     handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
     handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
@@ -98,47 +174,69 @@ function createTimeAnchor(chart) {
   return series;
 }
 
-function createCharts() {
-  const price = createChart(document.querySelector("#price-chart"), {
-    ...chartOptions(),
-    rightPriceScale: {
-      borderColor: "#cfd7d3",
-      minimumWidth: 86,
-      mode: PRICE_SCALE_MODES[state.currentPriceScale],
-    },
-  });
-  const efficiency = createChart(document.querySelector("#efficiency-chart"), chartOptions());
-
-  const priceSeries = price.addSeries(CandlestickSeries, {
-    upColor: "#087f6f",
-    downColor: "#c4573d",
-    borderUpColor: "#087f6f",
-    borderDownColor: "#c4573d",
-    wickUpColor: "#087f6f",
-    wickDownColor: "#c4573d",
-  });
-  const efficiencySeries = Object.fromEntries(
-    Object.entries(EFFICIENCY_COLORS).map(([window, color]) => [
-      window,
-      efficiency.addSeries(LineSeries, {
-        color,
-        lineWidth: 2,
+function createFeatureSeries(chart) {
+  return Object.fromEntries(
+    SERIES_KEYS.map((key) => [
+      key,
+      chart.addSeries(LineSeries, {
+        color: SERIES_COLORS[key],
+        lineWidth: key === "equal" || key === "midlong" ? 2 : 1,
         lastValueVisible: false,
         priceLineVisible: false,
         crosshairMarkerVisible: false,
       }),
     ]),
   );
+}
+
+function createCharts() {
+  const price = createChart(document.querySelector("#price-chart"), {
+    ...chartOptions({ timeVisible: false, fontSize: 11 }),
+    rightPriceScale: {
+      borderColor: "#d5ddd9",
+      minimumWidth: 58,
+      entireTextOnly: true,
+      mode: PRICE_SCALE_MODES[state.currentPriceScale],
+    },
+  });
+  const featureCharts = Object.fromEntries(
+    FEATURES.map((feature, index) => {
+      const elementId =
+        feature.key === "twoSidedness" ? "two-sidedness-chart" : `${feature.key}-chart`;
+      const isBottom = index === FEATURES.length - 1;
+      return [
+        feature.key,
+        createChart(
+          document.querySelector(`#${elementId}`),
+          chartOptions({ timeVisible: isBottom, fontSize: 10 }),
+        ),
+      ];
+    }),
+  );
 
   const charts = {
-    efficiency,
-    efficiencyBounds: createUnitBounds(efficiency),
-    efficiencySeries,
-    efficiencyTimeAnchor: createTimeAnchor(efficiency),
+    featureBounds: Object.fromEntries(
+      FEATURES.map((feature) => [feature.key, createUnitBounds(featureCharts[feature.key])]),
+    ),
+    featureSeries: Object.fromEntries(
+      FEATURES.map((feature) => [feature.key, createFeatureSeries(featureCharts[feature.key])]),
+    ),
+    featureTimeAnchors: Object.fromEntries(
+      FEATURES.map((feature) => [feature.key, createTimeAnchor(featureCharts[feature.key])]),
+    ),
+    features: featureCharts,
     price,
-    priceSeries,
+    priceSeries: price.addSeries(CandlestickSeries, {
+      upColor: "#087f6f",
+      downColor: "#c4573d",
+      borderUpColor: "#087f6f",
+      borderDownColor: "#c4573d",
+      wickUpColor: "#087f6f",
+      wickDownColor: "#c4573d",
+    }),
   };
-  syncTimeScales([price, efficiency]);
+
+  syncTimeScales([price, ...Object.values(featureCharts)]);
   subscribeCrosshairs(charts);
   bindChartFrames();
   return charts;
@@ -163,14 +261,18 @@ function syncTimeScales(charts) {
 }
 
 function subscribeCrosshairs(charts) {
-  for (const [source, chart] of [["price", charts.price], ["efficiency", charts.efficiency]]) {
+  const pairs = [
+    ["price", charts.price],
+    ...FEATURES.map((feature) => [feature.key, charts.features[feature.key]]),
+  ];
+  for (const [source, chart] of pairs) {
     chart.subscribeCrosshairMove((param) => {
       const time = timeKey(param.time);
       if (time && time <= asOfDate()) {
         state.chartInteraction = false;
         state.crosshairTime = time;
         state.crosshairSource = source;
-        renderSnapshot(time);
+        renderReadouts(time);
       } else if (state.crosshairSource === source) {
         clearCrosshair();
       }
@@ -180,7 +282,11 @@ function subscribeCrosshairs(charts) {
 }
 
 function bindChartFrames() {
-  for (const [source, frame] of [["price", dom.priceFrame], ["efficiency", dom.efficiencyFrame]]) {
+  const pairs = [
+    ["price", dom.priceFrame],
+    ...FEATURES.map((feature) => [feature.key, dom.featureFrames[feature.key]]),
+  ];
+  for (const [source, frame] of pairs) {
     frame.addEventListener("pointerdown", () => {
       state.chartInteraction = true;
       state.crosshairTime = null;
@@ -196,7 +302,7 @@ function bindChartFrames() {
 function clearCrosshair() {
   state.crosshairTime = null;
   state.crosshairSource = null;
-  renderSnapshot(asOfDate());
+  renderReadouts(asOfDate());
   scheduleMarkers();
 }
 
@@ -231,44 +337,80 @@ function lastRecordThrough(records, date) {
   return index >= 0 ? records[index] : null;
 }
 
+function fieldName(feature, seriesKey) {
+  return `${feature.fieldPrefix}_${seriesKey}`;
+}
+
+function formatDecimal(value, digits = 3) {
+  return value === null || value === undefined || Number.isNaN(Number(value))
+    ? "—"
+    : Number(value).toFixed(digits);
+}
+
+function formatPrice(value) {
+  return value === null || value === undefined || Number.isNaN(Number(value))
+    ? "—"
+    : Number(value).toFixed(2);
+}
+
+function percentChange(current, previous) {
+  if (
+    current === null ||
+    current === undefined ||
+    previous === null ||
+    previous === undefined ||
+    Number(previous) === 0
+  ) {
+    return null;
+  }
+  return ((Number(current) - Number(previous)) / Number(previous)) * 100;
+}
+
 function updateReplay({ resetRange = false } = {}) {
   const date = asOfDate();
   const { charts, payload } = state;
   const wasFollowingEnd = isFollowingAsOf();
   const visibleBars = payload.bars.slice(0, state.asOfIndex + 1);
   charts.priceSeries.setData(visibleBars);
-  charts.efficiencyTimeAnchor.setData(visibleBars.map((bar) => ({ time: bar.time, value: 0 })));
 
-  const efficiency = recordsThrough(payload.efficiency, date);
-  for (const [window, series] of Object.entries(charts.efficiencySeries)) {
-    const windowNumber = Number(window);
-    series.setData(
-      state.visibleEfficiency.has(windowNumber)
-        ? efficiency
-            .map((row) => ({ time: row.time, value: row[`efficiency_${window}`] }))
-            .filter((row) => row.value !== null)
-        : [],
+  for (const feature of FEATURES) {
+    charts.featureTimeAnchors[feature.key].setData(
+      visibleBars.map((bar) => ({ time: bar.time, value: 0 })),
     );
+    const records = recordsThrough(payload[feature.payloadKey], date);
+    for (const seriesKey of SERIES_KEYS) {
+      const series = charts.featureSeries[feature.key][seriesKey];
+      series.setData(
+        state.visibleSeries[feature.key].has(seriesKey)
+          ? records
+              .map((row) => ({ time: row.time, value: row[fieldName(feature, seriesKey)] }))
+              .filter((row) => row.value !== null && row.value !== undefined)
+          : [],
+      );
+    }
+    updateIndicatorBounds(charts.featureBounds[feature.key], records, date, feature.unitBounded);
   }
-  updateIndicatorBounds(charts.efficiencyBounds, efficiency, date);
 
   dom.asOfInput.value = date;
-  dom.asOfReadout.textContent = `AS OF ${date}`;
+  dom.asOfReadout.textContent = date;
   dom.previousButton.disabled = state.asOfIndex === 0;
   dom.nextButton.disabled = state.asOfIndex === payload.bars.length - 1;
-  renderSnapshot(date);
+  renderReadouts(state.crosshairTime && state.crosshairTime <= date ? state.crosshairTime : date);
   scheduleMarkers();
   if (resetRange || wasFollowingEnd) setDefaultVisibleRange();
 }
 
-function updateIndicatorBounds(series, records, fallbackTime) {
-  if (state.currentIndicatorScale === "auto") {
+function updateIndicatorBounds(series, records, fallbackTime, unitBounded) {
+  if (!unitBounded || state.currentIndicatorScale === "auto") {
     series.setData([]);
     return;
   }
   const first = records[0]?.time ?? fallbackTime;
   const last = records.at(-1)?.time ?? fallbackTime;
-  series.setData([{ time: first, value: 0 }, { time: last, value: 1 }]);
+  series.setData([
+    { time: first, value: 0 },
+    { time: last, value: 1 },
+  ]);
 }
 
 function isFollowingAsOf() {
@@ -281,22 +423,101 @@ function setDefaultVisibleRange() {
     from: Math.max(0, state.asOfIndex - state.currentRangeBars),
     to: state.asOfIndex,
   };
-  for (const chart of [state.charts.price, state.charts.efficiency]) {
+  for (const chart of [state.charts.price, ...Object.values(state.charts.features)]) {
     chart.timeScale().setVisibleLogicalRange(range);
   }
 }
 
-function renderSnapshot(time) {
-  const row = lastRecordThrough(state.payload.efficiency, time);
-  const values = row
-    ? [
-        ["观察日", time, true],
-        ["效率 5", formatDecimal(row.efficiency_5)],
-        ["效率 10", formatDecimal(row.efficiency_10)],
-        ["效率 20", formatDecimal(row.efficiency_20), true],
-        ["效率 55", formatDecimal(row.efficiency_55), true],
-      ]
-    : [["观察日", time, true], ["效率状态", "窗口尚未齐套"]];
+function renderReadouts(time) {
+  const bar = lastRecordThrough(state.payload.bars, time);
+  const previousBar = bar ? lastRecordThrough(state.payload.bars, previousDate(bar.time)) : null;
+  const efficiency = lastRecordThrough(state.payload.efficiency, time);
+  const direction = lastRecordThrough(state.payload.direction, time);
+  const twoSidedness = lastRecordThrough(state.payload.twoSidedness, time);
+
+  renderPriceLegend(bar, previousBar, time);
+  renderFeatureLegend(FEATURES[0], efficiency);
+  renderFeatureLegend(FEATURES[1], direction);
+  renderFeatureLegend(FEATURES[2], twoSidedness);
+  renderSnapshot(time, bar, previousBar, efficiency, direction, twoSidedness);
+}
+
+function previousDate(date) {
+  const index = endIndex(state.payload.bars, date) - 2;
+  return index >= 0 ? state.payload.bars[index].time : null;
+}
+
+function renderPriceLegend(bar, previousBar, time) {
+  const change = bar ? percentChange(bar.close, previousBar?.close) : null;
+  const changeText =
+    change === null ? "—" : `${change >= 0 ? "+" : ""}${change.toFixed(2)}%`;
+  const changeClass =
+    change === null ? "" : change >= 0 ? "is-up" : "is-down";
+
+  dom.priceLegend.innerHTML = `
+    <span class="legend-title">SPX</span>
+    <span class="legend-metric"><span class="legend-label">日</span><span class="legend-value">${time}</span></span>
+    <span class="legend-metric"><span class="legend-label">O</span><span class="legend-value">${formatPrice(bar?.open)}</span></span>
+    <span class="legend-metric"><span class="legend-label">H</span><span class="legend-value">${formatPrice(bar?.high)}</span></span>
+    <span class="legend-metric"><span class="legend-label">L</span><span class="legend-value">${formatPrice(bar?.low)}</span></span>
+    <span class="legend-metric"><span class="legend-label">C</span><span class="legend-value">${formatPrice(bar?.close)}</span></span>
+    <span class="legend-metric legend-change ${changeClass}">${changeText}</span>
+  `;
+}
+
+function renderFeatureLegend(feature, row) {
+  const root = dom.featureLegends[feature.key];
+  const parts = [
+    `<span class="legend-title">${feature.shortTitle}</span>`,
+    `<span class="legend-label">${feature.title}</span>`,
+  ];
+  for (const seriesKey of SERIES_KEYS) {
+    const on = state.visibleSeries[feature.key].has(seriesKey);
+    const value = row ? row[fieldName(feature, seriesKey)] : null;
+    parts.push(`
+      <button
+        type="button"
+        class="legend-item ${on ? "" : "is-off"}"
+        data-feature="${feature.key}"
+        data-series="${seriesKey}"
+        title="切换 ${SERIES_LABELS[seriesKey]}"
+      >
+        <span class="legend-swatch series-${seriesKey}"></span>
+        <span class="legend-label">${SERIES_LABELS[seriesKey]}</span>
+        <span class="legend-value">${on ? formatDecimal(value) : "—"}</span>
+      </button>
+    `);
+  }
+  root.innerHTML = parts.join("");
+}
+
+function renderSnapshot(time, bar, previousBar, efficiency, direction, twoSidedness) {
+  const change = bar ? percentChange(bar.close, previousBar?.close) : null;
+  const values =
+    bar && efficiency && direction && twoSidedness
+      ? [
+          ["观察日", time, true],
+          ["O", formatPrice(bar.open)],
+          ["H", formatPrice(bar.high)],
+          ["L", formatPrice(bar.low)],
+          ["C", formatPrice(bar.close), true],
+          [
+            "涨跌",
+            change === null ? "—" : `${change >= 0 ? "+" : ""}${change.toFixed(2)}%`,
+          ],
+          ["E 等权", formatDecimal(efficiency.efficiency_equal), true],
+          ["E 中长期", formatDecimal(efficiency.efficiency_midlong)],
+          ["D 等权", formatDecimal(direction.direction_equal), true],
+          ["D 中长期", formatDecimal(direction.direction_midlong)],
+          ["D 一致·等权", formatDecimal(direction.direction_agreement_equal)],
+          ["B 等权", formatDecimal(twoSidedness.two_sidedness_equal), true],
+          ["B 中长期", formatDecimal(twoSidedness.two_sidedness_midlong)],
+        ]
+      : [
+          ["观察日", time, true],
+          ["状态", "窗口尚未齐套"],
+        ];
+
   dom.snapshotValues.replaceChildren(
     ...values.map(([label, value, primary]) => {
       const item = document.createElement("div");
@@ -311,10 +532,6 @@ function renderSnapshot(time) {
   );
 }
 
-function formatDecimal(value) {
-  return value === null || value === undefined ? "-" : Number(value).toFixed(3);
-}
-
 function scheduleMarkers() {
   window.requestAnimationFrame(renderSynchronizedTimeMarkers);
 }
@@ -322,12 +539,17 @@ function scheduleMarkers() {
 function renderSynchronizedTimeMarkers() {
   const targets = [
     ["price", state.charts?.price, dom.priceTimeMarker],
-    ["efficiency", state.charts?.efficiency, dom.efficiencyTimeMarker],
+    ...FEATURES.map((feature) => [
+      feature.key,
+      state.charts?.features[feature.key],
+      dom.featureTimeMarkers[feature.key],
+    ]),
   ];
   for (const [name, chart, marker] of targets) {
-    const coordinate = state.crosshairTime && !state.chartInteraction && state.crosshairSource !== name && chart
-      ? chart.timeScale().timeToCoordinate(state.crosshairTime)
-      : null;
+    const coordinate =
+      state.crosshairTime && !state.chartInteraction && state.crosshairSource !== name && chart
+        ? chart.timeScale().timeToCoordinate(state.crosshairTime)
+        : null;
     marker.classList.toggle("is-visible", coordinate !== null);
     if (coordinate !== null) marker.style.transform = `translateX(${coordinate}px)`;
   }
@@ -354,6 +576,18 @@ function setIndicatorScale(scale) {
   updateReplay();
 }
 
+function setSnapshotOpen(open) {
+  state.snapshotOpen = open;
+  dom.workspace.classList.toggle("snapshot-collapsed", !open);
+  dom.snapshotToggle.setAttribute("aria-pressed", String(open));
+  dom.snapshotToggle.title = open ? "折叠快照栏" : "展开快照栏";
+  dom.snapshotToggle.setAttribute("aria-label", open ? "折叠快照栏" : "展开快照栏");
+  // Charts need a resize pass after the grid width changes.
+  window.requestAnimationFrame(() => {
+    window.dispatchEvent(new Event("resize"));
+  });
+}
+
 function setPlaying(playing) {
   if (!playing) {
     window.clearInterval(state.playbackTimer);
@@ -377,6 +611,17 @@ function setPlaying(playing) {
   }, PLAYBACK_INTERVAL_MS);
 }
 
+function toggleSeries(featureKey, seriesKey) {
+  const visible = state.visibleSeries[featureKey];
+  if (visible.has(seriesKey)) {
+    if (visible.size === 1) return;
+    visible.delete(seriesKey);
+  } else {
+    visible.add(seriesKey);
+  }
+  updateReplay();
+}
+
 function bindControls() {
   dom.previousButton.addEventListener("click", () => setAsOfIndex(state.asOfIndex - 1));
   dom.nextButton.addEventListener("click", () => setAsOfIndex(state.asOfIndex + 1));
@@ -391,14 +636,6 @@ function bindControls() {
   for (const button of dom.indicatorScaleButtons) {
     button.addEventListener("click", () => setIndicatorScale(button.dataset.indicatorScale));
   }
-  for (const checkbox of dom.efficiencyChecks) {
-    checkbox.addEventListener("change", () => {
-      const window = Number(checkbox.dataset.window);
-      if (checkbox.checked) state.visibleEfficiency.add(window);
-      else state.visibleEfficiency.delete(window);
-      updateReplay();
-    });
-  }
   for (const button of dom.rangeButtons) {
     button.addEventListener("click", () => {
       state.currentRangeBars = Number(button.dataset.rangeBars);
@@ -408,8 +645,19 @@ function bindControls() {
       setDefaultVisibleRange();
     });
   }
+  dom.snapshotToggle.addEventListener("click", () => setSnapshotOpen(!state.snapshotOpen));
+  for (const feature of FEATURES) {
+    dom.featureLegends[feature.key].addEventListener("click", (event) => {
+      const button = event.target.closest("[data-series]");
+      if (!button) return;
+      toggleSeries(button.dataset.feature, button.dataset.series);
+    });
+  }
   window.addEventListener("keydown", (event) => {
-    if (event.defaultPrevented || event.target.closest("input, button, select, textarea, [contenteditable='true']")) {
+    if (
+      event.defaultPrevented ||
+      event.target.closest("input, button, select, textarea, [contenteditable='true']")
+    ) {
       return;
     }
     if (event.code === "Space") {
@@ -436,7 +684,7 @@ async function boot() {
     const response = await fetch(API_URL, { cache: "no-store" });
     if (!response.ok) throw new Error(`数据请求失败 (${response.status})`);
     state.payload = await response.json();
-    if (state.payload.schemaVersion !== "phase1a_continuous_replay_v1") {
+    if (state.payload.schemaVersion !== "phase1a_continuous_replay_v2") {
       throw new Error("回放数据版本不受当前页面支持");
     }
     state.charts = createCharts();
@@ -446,10 +694,11 @@ async function boot() {
     dom.datasetMeta.textContent = `${state.payload.meta.snapshotId} · ${state.payload.meta.researchStart} - ${state.payload.meta.researchEnd}`;
     bindControls();
     createIcons({ icons });
+    setSnapshotOpen(true);
     updateReplay({ resetRange: true });
     const observer = new ResizeObserver(scheduleMarkers);
     observer.observe(dom.priceFrame);
-    observer.observe(dom.efficiencyFrame);
+    for (const frame of Object.values(dom.featureFrames)) observer.observe(frame);
     dom.loading.classList.add("ready");
   } catch (error) {
     setLoading(error instanceof Error ? error.message : "图表加载失败", true);
