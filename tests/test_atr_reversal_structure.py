@@ -1,4 +1,4 @@
-"""Tests for Track B ATR-threshold causal path reference."""
+"""Tests for the deferred ATR-threshold causal swing candidate."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from market_cycle.data import get_research_bars
-from market_cycle.measurements.path import (
+from market_cycle.structures.atr_reversal import (
     PATH_ID,
     build_atr_reversal_path,
     build_atr_reversal_paths,

@@ -19,26 +19,20 @@ const EFFICIENCY_COLORS = {
   20: "#576db5",
   55: "#9c711f",
 };
-const DIRECTION_COLORS = { up: "#087f6f", down: "#c4573d" };
-const INVALIDATED_COLOR = "#6d6961";
 const PRICE_SCALE_MODES = { log: PriceScaleMode.Logarithmic, linear: PriceScaleMode.Normal };
 
 const dom = {
   asOfInput: document.querySelector("#as-of-input"),
   asOfReadout: document.querySelector("#as-of-readout"),
-  candidateToggle: document.querySelector("#candidate-toggle"),
   datasetMeta: document.querySelector("#dataset-meta"),
   efficiencyChecks: [...document.querySelectorAll("[data-window]")],
+  efficiencyFrame: document.querySelector("#efficiency-frame"),
   efficiencyTimeMarker: document.querySelector("#efficiency-time-marker"),
+  indicatorScaleButtons: [...document.querySelectorAll("[data-indicator-scale]")],
   loading: document.querySelector("#loading-state"),
-  multiplierButtons: [...document.querySelectorAll("[data-multiplier]")],
   nextButton: document.querySelector("#next-button"),
-  pathOverlay: document.querySelector("#path-overlay"),
-  pathFrame: document.querySelector("#path-frame"),
-  pathTimeMarker: document.querySelector("#path-time-marker"),
   playButton: document.querySelector("#play-button"),
   previousButton: document.querySelector("#previous-button"),
-  indicatorScaleButtons: [...document.querySelectorAll("[data-indicator-scale]")],
   priceFrame: document.querySelector("#price-frame"),
   priceScaleButtons: [...document.querySelectorAll("[data-price-scale]")],
   priceTimeMarker: document.querySelector("#price-time-marker"),
@@ -50,15 +44,13 @@ const state = {
   asOfIndex: -1,
   chartInteraction: false,
   charts: null,
-  crosshairTime: null,
   crosshairSource: null,
-  currentMultiplier: "2",
+  crosshairTime: null,
+  currentIndicatorScale: "auto",
   currentPriceScale: "log",
   currentRangeBars: DEFAULT_RANGE_BARS,
-  currentIndicatorScale: "auto",
   payload: null,
   playbackTimer: null,
-  showCandidateLedger: false,
   visibleEfficiency: new Set([5, 10, 20, 55]),
 };
 
@@ -116,7 +108,6 @@ function createCharts() {
     },
   });
   const efficiency = createChart(document.querySelector("#efficiency-chart"), chartOptions());
-  const path = createChart(document.querySelector("#path-chart"), chartOptions());
 
   const priceSeries = price.addSeries(CandlestickSeries, {
     upColor: "#087f6f",
@@ -126,7 +117,6 @@ function createCharts() {
     wickUpColor: "#087f6f",
     wickDownColor: "#c4573d",
   });
-
   const efficiencySeries = Object.fromEntries(
     Object.entries(EFFICIENCY_COLORS).map(([window, color]) => [
       window,
@@ -140,29 +130,17 @@ function createCharts() {
     ]),
   );
 
-  const pathEfficiency = path.addSeries(LineSeries, {
-    color: "#354541",
-    lineWidth: 2,
-    lastValueVisible: false,
-    priceLineVisible: false,
-    crosshairMarkerVisible: false,
-  });
-
   const charts = {
     efficiency,
     efficiencyBounds: createUnitBounds(efficiency),
     efficiencySeries,
     efficiencyTimeAnchor: createTimeAnchor(efficiency),
-    path,
-    pathBounds: createUnitBounds(path),
-    pathEfficiency,
-    pathTimeAnchor: createTimeAnchor(path),
     price,
     priceSeries,
   };
-  syncTimeScales([price, efficiency, path]);
-  subscribeSnapshotCrosshairs(charts);
-  bindChartInteractionFrames();
+  syncTimeScales([price, efficiency]);
+  subscribeCrosshairs(charts);
+  bindChartFrames();
   return charts;
 }
 
@@ -179,54 +157,47 @@ function syncTimeScales(charts) {
         if (target !== source) target.timeScale().setVisibleLogicalRange(range);
       }
       syncing = false;
-      schedulePathOverlay();
+      scheduleMarkers();
     });
   }
 }
 
-function subscribeSnapshotCrosshairs(charts) {
-  for (const [source, chart] of [
-    ["price", charts.price],
-    ["efficiency", charts.efficiency],
-    ["path", charts.path],
-  ]) {
+function subscribeCrosshairs(charts) {
+  for (const [source, chart] of [["price", charts.price], ["efficiency", charts.efficiency]]) {
     chart.subscribeCrosshairMove((param) => {
       const time = timeKey(param.time);
       if (time && time <= asOfDate()) {
         state.chartInteraction = false;
         state.crosshairTime = time;
         state.crosshairSource = source;
-        renderSnapshotDetails(time);
+        renderSnapshot(time);
       } else if (state.crosshairSource === source) {
-        state.crosshairTime = null;
-        state.crosshairSource = null;
-        renderSnapshotDetails(asOfDate());
+        clearCrosshair();
       }
-      schedulePathOverlay();
+      scheduleMarkers();
     });
   }
 }
 
-function bindChartInteractionFrames() {
-  for (const [source, frame] of [
-    ["price", dom.priceFrame],
-    ["efficiency", dom.efficiencyTimeMarker.parentElement],
-    ["path", dom.pathFrame],
-  ]) {
+function bindChartFrames() {
+  for (const [source, frame] of [["price", dom.priceFrame], ["efficiency", dom.efficiencyFrame]]) {
     frame.addEventListener("pointerdown", () => {
       state.chartInteraction = true;
       state.crosshairTime = null;
       state.crosshairSource = null;
-      schedulePathOverlay();
+      scheduleMarkers();
     });
     frame.addEventListener("pointerleave", () => {
-      if (state.crosshairSource !== source) return;
-      state.crosshairTime = null;
-      state.crosshairSource = null;
-      renderSnapshotDetails(asOfDate());
-      schedulePathOverlay();
+      if (state.crosshairSource === source) clearCrosshair();
     });
   }
+}
+
+function clearCrosshair() {
+  state.crosshairTime = null;
+  state.crosshairSource = null;
+  renderSnapshot(asOfDate());
+  scheduleMarkers();
 }
 
 function timeKey(time) {
@@ -234,10 +205,6 @@ function timeKey(time) {
   if (typeof time === "string") return time;
   if (typeof time === "number") return new Date(time * 1000).toISOString().slice(0, 10);
   return `${time.year}-${String(time.month).padStart(2, "0")}-${String(time.day).padStart(2, "0")}`;
-}
-
-function activePath() {
-  return state.payload.paths[state.currentMultiplier];
 }
 
 function asOfDate() {
@@ -264,58 +231,33 @@ function lastRecordThrough(records, date) {
   return index >= 0 ? records[index] : null;
 }
 
-function eventByCandidateId(events, candidateId) {
-  return events.find(
-    (event) => event.kind === "candidate_created" && event.candidateId === candidateId,
-  );
-}
-
-function barByTime(time) {
-  const index = endIndex(state.payload.bars, time) - 1;
-  const bar = state.payload.bars[index];
-  return bar?.time === time ? bar : null;
-}
-
 function updateReplay({ resetRange = false } = {}) {
   const date = asOfDate();
   const { charts, payload } = state;
   const wasFollowingEnd = isFollowingAsOf();
-
   const visibleBars = payload.bars.slice(0, state.asOfIndex + 1);
   charts.priceSeries.setData(visibleBars);
-  const calendar = visibleBars.map((bar) => ({ time: bar.time, value: 0 }));
-  charts.efficiencyTimeAnchor.setData(calendar);
-  charts.pathTimeAnchor.setData(calendar);
+  charts.efficiencyTimeAnchor.setData(visibleBars.map((bar) => ({ time: bar.time, value: 0 })));
+
   const efficiency = recordsThrough(payload.efficiency, date);
   for (const [window, series] of Object.entries(charts.efficiencySeries)) {
     const windowNumber = Number(window);
     series.setData(
       state.visibleEfficiency.has(windowNumber)
-        ? efficiency.map((row) => ({ time: row.time, value: row[`efficiency_${window}`] })).filter((row) => row.value !== null)
+        ? efficiency
+            .map((row) => ({ time: row.time, value: row[`efficiency_${window}`] }))
+            .filter((row) => row.value !== null)
         : [],
     );
   }
   updateIndicatorBounds(charts.efficiencyBounds, efficiency, date);
 
-  const snapshots = recordsThrough(activePath().snapshots, date);
-  charts.pathEfficiency.setData(
-    snapshots
-      .filter((snapshot) => snapshot.pathEfficiency !== null)
-      .map((snapshot) => ({
-        time: snapshot.time,
-        value: snapshot.pathEfficiency,
-        color: DIRECTION_COLORS[snapshot.direction],
-      })),
-  );
-  updateIndicatorBounds(charts.pathBounds, snapshots, date);
-
   dom.asOfInput.value = date;
   dom.asOfReadout.textContent = `AS OF ${date}`;
   dom.previousButton.disabled = state.asOfIndex === 0;
   dom.nextButton.disabled = state.asOfIndex === payload.bars.length - 1;
-  renderSnapshotDetails(date);
-  schedulePathOverlay();
-
+  renderSnapshot(date);
+  scheduleMarkers();
   if (resetRange || wasFollowingEnd) setDefaultVisibleRange();
 }
 
@@ -326,10 +268,7 @@ function updateIndicatorBounds(series, records, fallbackTime) {
   }
   const first = records[0]?.time ?? fallbackTime;
   const last = records.at(-1)?.time ?? fallbackTime;
-  series.setData([
-    { time: first, value: 0 },
-    { time: last, value: 1 },
-  ]);
+  series.setData([{ time: first, value: 0 }, { time: last, value: 1 }]);
 }
 
 function isFollowingAsOf() {
@@ -338,158 +277,52 @@ function isFollowingAsOf() {
 }
 
 function setDefaultVisibleRange() {
-  const from = Math.max(0, state.asOfIndex - state.currentRangeBars);
-  const to = state.asOfIndex;
-  for (const chart of [state.charts.price, state.charts.efficiency, state.charts.path]) {
-    chart.timeScale().setVisibleLogicalRange({ from, to });
+  const range = {
+    from: Math.max(0, state.asOfIndex - state.currentRangeBars),
+    to: state.asOfIndex,
+  };
+  for (const chart of [state.charts.price, state.charts.efficiency]) {
+    chart.timeScale().setVisibleLogicalRange(range);
   }
 }
 
-function renderSnapshotDetails(time) {
-  const snapshot = lastRecordThrough(activePath().snapshots, time);
-  const rows = snapshot
+function renderSnapshot(time) {
+  const row = lastRecordThrough(state.payload.efficiency, time);
+  const values = row
     ? [
-        ["观察日", time],
-        ["路径方向", snapshot.direction === "up" ? "上行" : "下行", `direction-${snapshot.direction}`, true],
-        ["锚点", `${snapshot.anchorAt} / ${formatNumber(snapshot.anchorPrice)}`, null, true],
-        ["确认日", snapshot.confirmedAt ?? "-"],
-        ["活跃候选", `#${snapshot.currentCandidateId}`],
-        ["路径效率", formatDecimal(snapshot.pathEfficiency), null, true],
-        ["路径长度", formatNumber(snapshot.pathLengthMin)],
-        ["候选年龄", `${snapshot.candidateAgeBars} bars`],
-        ["最大反向移动", formatNumber(snapshot.maximumCounterMove)],
+        ["观察日", time, true],
+        ["效率 5", formatDecimal(row.efficiency_5)],
+        ["效率 10", formatDecimal(row.efficiency_10)],
+        ["效率 20", formatDecimal(row.efficiency_20), true],
+        ["效率 55", formatDecimal(row.efficiency_55), true],
       ]
-    : [["观察日", time], ["路径状态", "尚未齐套"]];
+    : [["观察日", time, true], ["效率状态", "窗口尚未齐套"]];
   dom.snapshotValues.replaceChildren(
-    ...rows.map(([label, value, valueClass, primary]) => {
-      const row = document.createElement("div");
+    ...values.map(([label, value, primary]) => {
+      const item = document.createElement("div");
       const term = document.createElement("dt");
       const definition = document.createElement("dd");
       term.textContent = label;
       definition.textContent = value;
-      if (valueClass) definition.classList.add(valueClass);
-      if (primary) row.classList.add("primary");
-      row.append(term, definition);
-      return row;
+      if (primary) item.classList.add("primary");
+      item.append(term, definition);
+      return item;
     }),
   );
-}
-
-function formatNumber(value) {
-  return value === null || value === undefined ? "-" : Number(value).toFixed(2);
 }
 
 function formatDecimal(value) {
   return value === null || value === undefined ? "-" : Number(value).toFixed(3);
 }
 
-function schedulePathOverlay() {
-  window.requestAnimationFrame(() => {
-    renderPathOverlay();
-    renderSynchronizedTimeMarkers();
-  });
-}
-
-function svgElement(name, attributes) {
-  const element = document.createElementNS("http://www.w3.org/2000/svg", name);
-  for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, String(value));
-  return element;
-}
-
-function chartPoint(time, price) {
-  const x = state.charts.price.timeScale().timeToCoordinate(time);
-  const y = state.charts.priceSeries.priceToCoordinate(price);
-  return x === null || y === null ? null : { x, y };
-}
-
-function appendLine(group, start, end, color, dash = null, width = 2) {
-  const line = svgElement("line", {
-    x1: start.x,
-    y1: start.y,
-    x2: end.x,
-    y2: end.y,
-    stroke: color,
-    "stroke-width": width,
-    "stroke-linecap": "round",
-  });
-  if (dash) line.setAttribute("stroke-dasharray", dash);
-  group.append(line);
-}
-
-function appendCircle(group, point, color, radius = 3, fill = "#fbfcfb") {
-  group.append(
-    svgElement("circle", {
-      cx: point.x,
-      cy: point.y,
-      r: radius,
-      fill,
-      stroke: color,
-      "stroke-width": 1.5,
-    }),
-  );
-}
-
-function renderPathOverlay() {
-  if (!state.charts || !state.payload) return;
-  const bounds = dom.priceFrame.getBoundingClientRect();
-  dom.pathOverlay.setAttribute("viewBox", `0 0 ${bounds.width} ${bounds.height}`);
-  dom.pathOverlay.replaceChildren();
-
-  const date = asOfDate();
-  const events = recordsThrough(activePath().events, date);
-  const confirmed = events.filter((event) => event.kind === "candidate_confirmed");
-  const completedGroup = svgElement("g", {});
-  for (const event of confirmed) {
-    const anchor = chartPoint(event.anchorAt, event.anchorPrice);
-    const confirmationBar = barByTime(event.time);
-    const confirmation = confirmationBar ? chartPoint(event.time, confirmationBar.close) : null;
-    if (!anchor || !confirmation) continue;
-    const color = DIRECTION_COLORS[event.direction];
-    appendLine(completedGroup, anchor, confirmation, color);
-    appendCircle(completedGroup, anchor, color);
-    appendCircle(completedGroup, confirmation, color, 2.5, color);
-  }
-  dom.pathOverlay.append(completedGroup);
-
-  const snapshot = lastRecordThrough(activePath().snapshots, date);
-  const activeCandidate = snapshot
-    ? eventByCandidateId(events, snapshot.currentCandidateId)
-    : null;
-  const currentBar = barByTime(date);
-  if (activeCandidate && currentBar) {
-    const anchor = chartPoint(activeCandidate.anchorAt, activeCandidate.anchorPrice);
-    const current = chartPoint(date, currentBar.close);
-    if (anchor && current) {
-      const group = svgElement("g", {});
-      const color = DIRECTION_COLORS[activeCandidate.direction];
-      appendLine(group, anchor, current, color, "6 5", 1.5);
-      appendCircle(group, anchor, color, 3.5);
-      dom.pathOverlay.append(group);
-    }
-  }
-
-  if (!state.showCandidateLedger) return;
-  const auditGroup = svgElement("g", { opacity: "0.82" });
-  for (const event of events) {
-    if (event.kind === "candidate_confirmed") continue;
-    const anchor = chartPoint(event.anchorAt, event.anchorPrice);
-    if (!anchor) continue;
-    const color = event.kind === "candidate_invalidated" ? INVALIDATED_COLOR : DIRECTION_COLORS[event.direction];
-    appendCircle(auditGroup, anchor, color, event.kind === "candidate_invalidated" ? 4.5 : 3);
-    if (event.kind === "candidate_invalidated") {
-      const invalidationBar = barByTime(event.time);
-      const invalidation = invalidationBar ? chartPoint(event.time, invalidationBar.close) : null;
-      if (invalidation) appendLine(auditGroup, anchor, invalidation, color, "2 4", 1);
-    }
-  }
-  dom.pathOverlay.append(auditGroup);
+function scheduleMarkers() {
+  window.requestAnimationFrame(renderSynchronizedTimeMarkers);
 }
 
 function renderSynchronizedTimeMarkers() {
   const targets = [
     ["price", state.charts?.price, dom.priceTimeMarker],
     ["efficiency", state.charts?.efficiency, dom.efficiencyTimeMarker],
-    ["path", state.charts?.path, dom.pathTimeMarker],
   ];
   for (const [name, chart, marker] of targets) {
     const coordinate = state.crosshairTime && !state.chartInteraction && state.crosshairSource !== name && chart
@@ -505,23 +338,12 @@ function setAsOfIndex(index, { resetRange = false } = {}) {
   updateReplay({ resetRange });
 }
 
-function setMultiplier(multiplier) {
-  state.currentMultiplier = multiplier;
-  for (const button of dom.multiplierButtons) {
-    button.setAttribute("aria-pressed", String(button.dataset.multiplier === multiplier));
-  }
-  updateReplay();
-}
-
 function setPriceScale(scale) {
   state.currentPriceScale = scale;
-  state.charts.price.applyOptions({
-    rightPriceScale: { mode: PRICE_SCALE_MODES[scale] },
-  });
+  state.charts.price.applyOptions({ rightPriceScale: { mode: PRICE_SCALE_MODES[scale] } });
   for (const button of dom.priceScaleButtons) {
     button.setAttribute("aria-pressed", String(button.dataset.priceScale === scale));
   }
-  schedulePathOverlay();
 }
 
 function setIndicatorScale(scale) {
@@ -560,17 +382,9 @@ function bindControls() {
   dom.nextButton.addEventListener("click", () => setAsOfIndex(state.asOfIndex + 1));
   dom.playButton.addEventListener("click", () => setPlaying(!state.playbackTimer));
   dom.asOfInput.addEventListener("change", () => {
-    const requested = dom.asOfInput.value;
-    const index = endIndex(state.payload.bars, requested) - 1;
+    const index = endIndex(state.payload.bars, dom.asOfInput.value) - 1;
     setAsOfIndex(index < 0 ? 0 : index);
   });
-  dom.candidateToggle.addEventListener("change", () => {
-    state.showCandidateLedger = dom.candidateToggle.checked;
-    schedulePathOverlay();
-  });
-  for (const button of dom.multiplierButtons) {
-    button.addEventListener("click", () => setMultiplier(button.dataset.multiplier));
-  }
   for (const button of dom.priceScaleButtons) {
     button.addEventListener("click", () => setPriceScale(button.dataset.priceScale));
   }
@@ -606,8 +420,7 @@ function bindControls() {
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       event.preventDefault();
       const direction = event.key === "ArrowLeft" ? -1 : 1;
-      const step = event.shiftKey ? 21 : 1;
-      setAsOfIndex(state.asOfIndex + direction * step);
+      setAsOfIndex(state.asOfIndex + direction * (event.shiftKey ? 21 : 1));
     }
   });
 }
@@ -623,7 +436,7 @@ async function boot() {
     const response = await fetch(API_URL, { cache: "no-store" });
     if (!response.ok) throw new Error(`数据请求失败 (${response.status})`);
     state.payload = await response.json();
-    if (state.payload.schemaVersion !== "phase1a_replay_v1") {
+    if (state.payload.schemaVersion !== "phase1a_continuous_replay_v1") {
       throw new Error("回放数据版本不受当前页面支持");
     }
     state.charts = createCharts();
@@ -634,10 +447,9 @@ async function boot() {
     bindControls();
     createIcons({ icons });
     updateReplay({ resetRange: true });
-    const observer = new ResizeObserver(schedulePathOverlay);
+    const observer = new ResizeObserver(scheduleMarkers);
     observer.observe(dom.priceFrame);
-    observer.observe(dom.pathFrame);
-    observer.observe(dom.efficiencyTimeMarker.parentElement);
+    observer.observe(dom.efficiencyFrame);
     dom.loading.classList.add("ready");
   } catch (error) {
     setLoading(error instanceof Error ? error.message : "图表加载失败", true);

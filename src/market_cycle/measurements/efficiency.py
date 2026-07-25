@@ -1,4 +1,4 @@
-"""Track A fixed-window OHLC-min path efficiency (Phase 1A v0.1)."""
+"""Phase 1A fixed-window OHLC-min continuous behavior efficiency."""
 
 from __future__ import annotations
 
@@ -8,10 +8,11 @@ from typing import Sequence
 import numpy as np
 import pandas as pd
 
+from market_cycle.data.geometry import ohlc_min_path_length, validate_ohlc_bars
+
 EFFICIENCY_ID = "bm_e_01_ohlc_min_v1"
 EFFICIENCY_WINDOWS: tuple[int, ...] = (5, 10, 20, 55)
 
-_OHLC_COLUMNS = ("date", "open", "high", "low", "close")
 _STATUS_OK = "ok"
 _STATUS_INSUFFICIENT_HISTORY = "insufficient_history"
 _STATUS_ZERO_PATH = "zero_path"
@@ -41,58 +42,7 @@ def _validated_windows(windows: Sequence[int]) -> tuple[int, ...]:
 
 
 def _validated_bars(bars: pd.DataFrame) -> pd.DataFrame:
-    missing = [column for column in _OHLC_COLUMNS if column not in bars.columns]
-    if missing:
-        raise ValueError(f"bars missing required columns: {missing}")
-
-    out = bars.loc[:, _OHLC_COLUMNS].copy()
-    out["date"] = pd.to_datetime(out["date"]).dt.normalize()
-    for column in _OHLC_COLUMNS[1:]:
-        out[column] = pd.to_numeric(out[column], errors="coerce")
-
-    if out.isna().any().any():
-        raise ValueError("bars contain null OHLC values")
-    if not out["date"].is_monotonic_increasing or out["date"].duplicated().any():
-        raise ValueError("bars must have unique dates in ascending order")
-    if (out["high"] < out["low"]).any():
-        raise ValueError("bars contain high < low")
-    if ((out["open"] < out["low"]) | (out["open"] > out["high"])).any():
-        raise ValueError("bars contain open outside [low, high]")
-    if ((out["close"] < out["low"]) | (out["close"] > out["high"])).any():
-        raise ValueError("bars contain close outside [low, high]")
-    return out.reset_index(drop=True)
-
-
-def ohlc_min_path_length(bars: pd.DataFrame) -> pd.Series:
-    """Return the minimum path compatible with each daily OHLC observation.
-
-    The first row is ``NaN`` because it lacks a previous close. Each later row
-    counts the observed previous-close-to-open displacement plus the shorter of
-    the two high/low visit orders. This is a lower bound on unknown intraday
-    path length, not a reconstructed intraday path.
-    """
-    work = _validated_bars(bars)
-    close = work["close"].to_numpy(dtype=float)
-    open_ = work["open"].to_numpy(dtype=float)
-    high = work["high"].to_numpy(dtype=float)
-    low = work["low"].to_numpy(dtype=float)
-
-    path = np.full(len(work), np.nan, dtype=float)
-    if len(work) > 1:
-        gap = np.abs(open_[1:] - close[:-1])
-        high_then_low = (
-            np.abs(open_[1:] - high[1:])
-            + np.abs(high[1:] - low[1:])
-            + np.abs(low[1:] - close[1:])
-        )
-        low_then_high = (
-            np.abs(open_[1:] - low[1:])
-            + np.abs(low[1:] - high[1:])
-            + np.abs(high[1:] - close[1:])
-        )
-        path[1:] = gap + np.minimum(high_then_low, low_then_high)
-
-    return pd.Series(path, index=work.index, name="ohlc_min_path_length")
+    return validate_ohlc_bars(bars)
 
 
 def build_ohlc_min_efficiency(

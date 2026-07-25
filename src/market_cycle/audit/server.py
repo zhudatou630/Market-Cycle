@@ -1,4 +1,4 @@
-"""Run the local Phase 1A chart audit service."""
+"""Run the local Phase 1A continuous-behavior audit service."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
-from market_cycle.audit.replay import load_phase1a_replay
+from market_cycle.audit.replay import load_phase1a_continuous_replay
 from market_cycle.data import DEFAULT_SNAPSHOT_ID
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -71,17 +71,17 @@ def serve(
     snapshot_id: str = DEFAULT_SNAPSHOT_ID,
     static_dir: Path = _DEFAULT_STATIC_DIR,
 ) -> None:
-    """Compute the replay bundle once, then serve the local audit page."""
+    """Compute the continuous replay bundle once, then serve the local audit page."""
     static_dir = static_dir.resolve()
     if not static_dir.is_dir():
         raise FileNotFoundError(
             f"Chart assets not found: {static_dir}. Run `npm run build` in web first."
         )
 
-    payload = json.dumps(load_phase1a_replay(snapshot_id), separators=(",", ":")).encode("utf-8")
+    payload = json.dumps(load_phase1a_continuous_replay(snapshot_id), separators=(",", ":")).encode("utf-8")
     handler = _make_handler(replay_payload=payload, static_dir=static_dir)
     server = ThreadingHTTPServer((host, port), handler)
-    print(f"Phase 1A chart audit: http://{host}:{port}")
+    print(f"Phase 1A continuous audit: http://{host}:{port}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -91,7 +91,7 @@ def serve(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the local Phase 1A chart audit page.")
+    parser = argparse.ArgumentParser(description="Run the local Phase 1A continuous audit page.")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", default=8765, type=int)
     parser.add_argument("--snapshot-id", default=DEFAULT_SNAPSHOT_ID)

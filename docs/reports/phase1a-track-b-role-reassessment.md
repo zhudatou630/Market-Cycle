@@ -1,6 +1,6 @@
 ---
 title: Phase 1A 轨道 B 角色复审：从基础状态表示退回结构解析候选
-status: external-architecture-review
+status: external-architecture-review-adopted
 updated: 2026-07-25
 owner: external-review
 related:
@@ -19,6 +19,10 @@ related:
 本文不直接修改 D-011、D-012 或现行工作协议，也不根据少量图表宣布轨道 A 已胜出、轨道 B 已失败。它主要回答一个更具体的问题：
 
 > 当前轨道 B 是否被安排到了错误的系统层级？它是否本来更适合作为后期路径、摆动和形态结构的基础工具，而不是与轨道 A 并列承担基础连续状态表示？
+
+**后续结果**：本文的系统分层建议被 D-013 采纳。D-011/D-012 的基础轨道角色已被
+替代；当前 ATR 路径保留为 `structures` 下的 Phase 2 候选。本文其余内容保留为外部
+架构复审的论证与边界说明。
 
 ## 2. 核心结论
 

@@ -1,4 +1,4 @@
-"""Track B ATR-threshold causal path reference (Phase 1A v0.1)."""
+"""Single-scale ATR-threshold causal swing candidate for future structure research."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Sequence
 import numpy as np
 import pandas as pd
 
-from market_cycle.measurements.efficiency import ohlc_min_path_length
+from market_cycle.data.geometry import ohlc_min_path_length
 
 PATH_ID = "bm_g_01_atr_reversal_v1"
 PATH_MULTIPLIERS: tuple[float, ...] = (1.0, 2.0, 3.0)
