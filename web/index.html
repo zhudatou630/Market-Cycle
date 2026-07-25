@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <title>Phase 1A 图表审计</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="title-block">
+          <p class="eyebrow">SPX / Phase 1A</p>
+          <h1>价格过程审计</h1>
+        </div>
+        <div class="dataset-meta" id="dataset-meta" aria-live="polite"></div>
+      </header>
+
+      <section class="control-band" aria-label="回放控制">
+        <div class="control-group" aria-label="时间导航">
+          <div class="playback-controls">
+            <button class="icon-button" id="previous-button" type="button" title="前一个交易日（左方向键）" aria-label="前一个交易日">
+              <i data-lucide="chevron-left" aria-hidden="true"></i>
+            </button>
+            <button class="icon-button" id="play-button" type="button" title="播放回放（空格键）" aria-label="播放回放">
+              <i data-lucide="play" aria-hidden="true"></i>
+            </button>
+            <button class="icon-button" id="next-button" type="button" title="后一个交易日（右方向键）" aria-label="后一个交易日">
+              <i data-lucide="chevron-right" aria-hidden="true"></i>
+            </button>
+          </div>
+
+          <label class="date-control" for="as-of-input">
+            <span>AS OF</span>
+            <input id="as-of-input" type="date" />
+          </label>
+
+          <div class="range-controls" aria-label="观察范围">
+            <button type="button" data-range-bars="63">3M</button>
+            <button type="button" data-range-bars="126">6M</button>
+            <button type="button" data-range-bars="252" aria-pressed="true">1Y</button>
+            <button type="button" data-range-bars="756">3Y</button>
+          </div>
+        </div>
+
+        <span class="control-divider" aria-hidden="true"></span>
+
+        <div class="control-group" aria-label="路径参数">
+          <div class="segmented-control" aria-label="ATR 阈值倍数">
+            <button type="button" data-multiplier="1">k=1</button>
+            <button type="button" data-multiplier="2" aria-pressed="true">k=2</button>
+            <button type="button" data-multiplier="3">k=3</button>
+          </div>
+
+          <label class="toggle-control" for="candidate-toggle">
+            <input id="candidate-toggle" type="checkbox" />
+            <span class="toggle-track" aria-hidden="true"></span>
+            <span>候选账本</span>
+          </label>
+        </div>
+
+        <span class="control-divider" aria-hidden="true"></span>
+
+        <div class="control-group scale-group" aria-label="价格轴尺度">
+          <span class="control-label">价格轴</span>
+          <div class="segmented-control" aria-label="价格轴尺度">
+            <button type="button" data-price-scale="log" aria-pressed="true">Log</button>
+            <button type="button" data-price-scale="linear">Linear</button>
+          </div>
+        </div>
+
+        <span class="control-divider" aria-hidden="true"></span>
+
+        <div class="control-group scale-group" aria-label="指标轴尺度">
+          <span class="control-label">指标轴</span>
+          <div class="segmented-control" aria-label="指标轴尺度">
+            <button type="button" data-indicator-scale="auto" aria-pressed="true">Auto</button>
+            <button type="button" data-indicator-scale="fixed">0-1</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace" aria-label="同步图表">
+        <div class="chart-stack">
+          <section class="chart-panel price-panel" aria-labelledby="price-heading">
+            <div class="panel-heading">
+              <div>
+                <p class="panel-kicker">价格与因果路径</p>
+                <h2 id="price-heading">SPX 日线</h2>
+              </div>
+              <div class="price-panel-tools">
+                <div class="path-key" aria-label="路径标记图例">
+                  <span><i class="path-stroke confirmed"></i>确认</span>
+                  <span><i class="path-stroke active"></i>活跃候选</span>
+                  <span><i class="path-stroke invalidated"></i>失效</span>
+                </div>
+                <span class="as-of-readout" id="as-of-readout"></span>
+              </div>
+            </div>
+            <div class="chart-frame" id="price-frame">
+              <div class="chart-surface" id="price-chart"></div>
+              <svg class="path-overlay" id="path-overlay" aria-hidden="true"></svg>
+              <span class="sync-time-marker" id="price-time-marker" aria-hidden="true"></span>
+            </div>
+          </section>
+
+          <section class="chart-panel efficiency-panel" aria-labelledby="efficiency-heading">
+            <div class="panel-heading panel-heading-compact">
+              <div>
+                <p class="panel-kicker">轨道 A</p>
+                <h2 id="efficiency-heading">OHLC-min 效率</h2>
+              </div>
+              <fieldset class="efficiency-toggles" aria-label="效率窗口显示">
+                <label><input type="checkbox" data-window="5" checked /><span class="swatch efficiency-5"></span>5</label>
+                <label><input type="checkbox" data-window="10" checked /><span class="swatch efficiency-10"></span>10</label>
+                <label><input type="checkbox" data-window="20" checked /><span class="swatch efficiency-20"></span>20</label>
+                <label><input type="checkbox" data-window="55" checked /><span class="swatch efficiency-55"></span>55</label>
+              </fieldset>
+            </div>
+            <div class="chart-frame compact-frame">
+              <div class="chart-surface" id="efficiency-chart"></div>
+              <span class="sync-time-marker" id="efficiency-time-marker" aria-hidden="true"></span>
+            </div>
+          </section>
+
+          <section class="chart-panel path-panel" aria-labelledby="path-heading">
+            <div class="panel-heading panel-heading-compact">
+              <div>
+                <p class="panel-kicker">轨道 B</p>
+                <h2 id="path-heading">锚定路径效率</h2>
+              </div>
+              <div class="direction-key" aria-label="路径方向">
+                <span><i class="direction-dot up"></i>上行路径效率</span>
+                <span><i class="direction-dot down"></i>下行路径效率</span>
+              </div>
+            </div>
+            <div class="chart-frame compact-frame" id="path-frame">
+              <div class="chart-surface" id="path-chart"></div>
+              <span class="sync-time-marker" id="path-time-marker" aria-hidden="true"></span>
+            </div>
+          </section>
+        </div>
+
+        <aside class="snapshot-panel" aria-labelledby="snapshot-heading">
+          <div class="snapshot-heading">
+            <p class="panel-kicker">每日快照</p>
+            <h2 id="snapshot-heading">路径上下文</h2>
+          </div>
+          <dl class="snapshot-values" id="snapshot-values"></dl>
+        </aside>
+      </section>
+
+      <div class="loading-state" id="loading-state" role="status">正在加载冻结研究数据</div>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

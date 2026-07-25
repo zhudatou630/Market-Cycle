@@ -32,6 +32,10 @@ results/
 !.env.example
 *.log
 
+# Local frontend dependencies and generated bundles
+web/node_modules/
+web/dist/
+
 # Editors and operating systems
 .vscode/
 .idea/
