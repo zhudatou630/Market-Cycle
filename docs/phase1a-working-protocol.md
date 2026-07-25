@@ -241,6 +241,11 @@ two_sidedness_midlong_v1[+_status]
 
 中心穿越与摆动对称不在本版本。
 
+开发审计备注（2026-07-25，非正式结论）：真实窗口上短窗 `B` 对“是否一边倒”有
+反应，但长窗接近饱和；低效率子集内安静停滞与剧烈往返几乎不可分。详见
+[phase1a-edb-development-audit.md](reports/phase1a-edb-development-audit.md)。
+是否改版或收缩职责，待扩张 `X` 的语义分工后再定；当前不调参粉饰。
+
 ## 7. 开发验收
 
 每个连续特征族必须满足：
