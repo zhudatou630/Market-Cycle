@@ -65,7 +65,7 @@ Phase 1A 禁止使用当前腿、回调深度、路径年龄、Episode 起源等
 最近的 E/D/B 开发审计还发现：低效率场景中，安静停滞与剧烈往返的 `B` 分数近乎不可
 分；`B` 长窗也接近饱和。因此，`X` 有明确的潜在增量职责：描述波动制度或活动区域的
 扩张，而不是把 `B` 改名。完整观察见
-`docs/reports/phase1a-edb-development-audit.md`。
+`docs/reports/phase1a-continuous-feature-development-audit.md`。
 
 ## 3. 历史候选及其未解决问题
 
@@ -293,7 +293,7 @@ Brooks 风格的突破语义更强调“此前有意义的价格”--例如摆�
 | `docs/decisions.md`（D-013） | Phase 1A/Phase 2 的架构边界 |
 | `docs/phase1a-working-protocol.md` | 当前 E/D/B 的正式开发协议 |
 | `docs/brooks-measurement-candidates.md`（BM-X-01、BM-X-RET-01/02） | 原始候选、时间风险和公式档案 |
-| `docs/reports/phase1a-edb-development-audit.md` | E/D/B 冻结样本开发审计与 X 的缺口动机 |
+| `docs/reports/phase1a-continuous-feature-development-audit.md` | 连续特征候选分项审计与 X 的缺口动机 |
 | `src/market_cycle/data/ruler.py` | 共享 `tr_pct` / `atr_pct_14` 的既有口径 |
 | `src/market_cycle/measurements/` | 当前 E/D/B 实现风格；目前没有 X 实现 |
 

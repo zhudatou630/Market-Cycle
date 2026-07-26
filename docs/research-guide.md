@@ -101,12 +101,14 @@ Phase 7  Market Context 与策略政策、风险和组合接口
 - 扩张 `BM-X-01-OHLC-impulse v1` 与旧区位置
   `BM-X-DEP-01-prior-range-clearance v1`。
 
-三者共用 `{5,10,20,55}` 窗口与等权 / 中长期优先两种跨尺度压缩。它们描述最近
+当前 `E/D/B/X/clearance v1` 是开发候选集合，不是已锁定的最终表示或市场状态输入。
+
+`E/D/B` 三者共用 `{5,10,20,55}` 窗口与等权 / 中长期优先两种跨尺度压缩。它们描述最近
 不同尺度上的直接性、中心迁移和双向再交易，不识别当前腿，也不直接产生状态标签。
 当前开发任务是：
 
-- ~~审计真实窗口上 `E/D/B` 的语义与互补性~~ → 开发观察已记入
-  [phase1a-edb-development-audit.md](reports/phase1a-edb-development-audit.md)
+- ~~审计真实窗口上 `E/D/B/X/clearance` 的分项语义~~ → 开发观察已记入
+  [phase1a-continuous-feature-development-audit.md](reports/phase1a-continuous-feature-development-audit.md)
   （非正式结论；`B` 有安静/剧烈盲区）；
 - 审计 `X` 与 `E/D/B` 的联合语义、冗余和反例；`X` 当前只含活动背景、当日冲击和
   clearance，不含 Retention 或通道事件；

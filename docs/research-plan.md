@@ -31,8 +31,12 @@ owner: current-research
 - `bm_g_01_atr_reversal_v1` 的候选、确认、失效与 `as_of` 因果实现，现保留为
   `structures` 下的未来结构候选，不属于 Phase 1A 基础层；
 - 本地连续行为审计页，用于 K 线、`E/D/B/X`、clearance 与严格 `as_of` 回放；
-- `E/D/B` 真实窗口开发审计（观察与反例，非正式结论）：
-  [phase1a-edb-development-audit.md](reports/phase1a-edb-development-audit.md)。
+- `E/D/B/X/clearance` 分项真实窗口开发审计（观察与反例，非正式结论）：
+  [phase1a-continuous-feature-development-audit.md](reports/phase1a-continuous-feature-development-audit.md)。
+
+当前 `E/D/B/X/clearance v1` 是完整的**开发候选集合**，不是最终结论或已锁定的状态
+输入。各量已完成实现、性质测试、前缀回放与分项审计；是否保留、如何联合阅读及是否
+值得压缩，仍须按后续研究块独立检验。
 
 当前操作位置是 **Phase 1A 开发块：基础连续行为表示**。依据 D-013，当前只研究
 固定窗口、多尺度、无需显式腿或摆动起点的连续行为量。当前不研究当前腿、回调、

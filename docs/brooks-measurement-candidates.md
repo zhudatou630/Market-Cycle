@@ -248,7 +248,7 @@ $$
 - 原 `Overlap_t` 按较短 K 线归一化会把 inside bar 直接记为 1；Phase 1A 改用
   交并比，降低“短暂停顿 = 高度再交易”的误读；
 - 双向性不是 `1-E`。净上涨且回调很深的宽通道可以同时有较高 `D` 和较高 `B`；
-- 开发审计（[phase1a-edb-development-audit.md](reports/phase1a-edb-development-audit.md)）
+- 开发审计（[phase1a-continuous-feature-development-audit.md](reports/phase1a-continuous-feature-development-audit.md)）
   显示：短窗对“是否一边倒”有反应，但长窗近乎饱和；低效率内安静停滞与剧烈往返
   几乎不可分。当前 `BM-X-01` 已承担“活动背景 / 当日冲击”分工；`B` 是否改版仍待
   X 的联合开发审计，不能静默把 B 改成波动量。

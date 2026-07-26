@@ -1,6 +1,6 @@
 ---
 title: Phase 1A 连续行为表示工作协议
-status: development-v0.4
+status: candidate-development-v1
 updated: 2026-07-25
 owner: phase1a-research
 ---
@@ -22,6 +22,12 @@ Episode 起点的固定窗口、多尺度量：方向、效率、双向性；以
 - `BM-X-DEP-01-prior-range-clearance v1` 20 / 55 日完整 K 线范围的连续位置参考。
 
 它们是连续行为层的测量，不是完整状态机，也不预设 Brooks 阶段标签。
+
+### 候选版本状态
+
+当前 `E/D/B/X/clearance v1` 是 Phase 1A 的**开发候选集合**：每个对象已有版本化
+公式、实现、性质测试与分项审计，但尚未经过联合开发审计、选择块或锁定确认。候选
+集合不是最终市场状态输入，也不意味着任何单项已被正式保留或排除。
 
 不做：因果路径分段、当前腿效率、回调比例、路径年龄、Episode、通道、三推、双底、
 完整形态分类、交易信号或仓位决策。
@@ -263,7 +269,7 @@ two_sidedness_midlong_v1[+_status]
 
 开发审计备注（2026-07-25，非正式结论）：真实窗口上短窗 `B` 对“是否一边倒”有
 反应，但长窗接近饱和；低效率子集内安静停滞与剧烈往返几乎不可分。详见
-[phase1a-edb-development-audit.md](reports/phase1a-edb-development-audit.md)。
+[phase1a-continuous-feature-development-audit.md](reports/phase1a-continuous-feature-development-audit.md)。
 是否改版或收缩职责，待扩张 `X` 的语义分工后再定；当前不调参粉饰。
 
 ## 7. 扩张 `BM-X-01-OHLC-impulse v1`
@@ -402,8 +408,10 @@ prior_range_clearance_{up,down}_{20,55}[+_status]
 
 ## 10. 当前结论边界
 
-本协议只定义可复现的连续价格过程实验。它尚未证明固定窗口足以构成市场状态，也不
-产生 `BALANCE`、`DIRECTIONAL` 或其他市场状态，更不产生交易结论。
+本协议只定义可复现的连续价格过程实验。当前 `E/D/B/X/clearance v1` 仍是开发候选，
+尚未证明固定窗口足以构成市场状态，也不产生 `BALANCE`、`DIRECTIONAL` 或其他市场
+状态，更不产生交易结论。
 
-当前 `X` 只完成了日度冲击和连续位置参考定义；尚未证明其相对 E/D/B 的增量，也不构成
-扩张状态或未来接受判断。当前 `bm_g_01_atr_reversal_v1` 不构成本协议连续表示的同层对照。
+`X` 与 clearance 已完成日度冲击和连续位置参考的分项观察；尚未证明其相对 E/D/B 的
+增量，也不构成扩张状态或未来接受判断。当前 `bm_g_01_atr_reversal_v1` 不构成本协议
+连续表示的同层对照。
