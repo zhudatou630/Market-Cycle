@@ -98,6 +98,8 @@ Phase 7  Market Context 与策略政策、风险和组合接口
 - 效率 `BM-E-01-OHLC-min v1`；
 - 方向 `BM-D-01-theilsen-atr v1`；
 - 双向性 `BM-B-01-entropy-overlap v1`。
+- 扩张 `BM-X-01-OHLC-impulse v1` 与旧区位置
+  `BM-X-DEP-01-prior-range-clearance v1`。
 
 三者共用 `{5,10,20,55}` 窗口与等权 / 中长期优先两种跨尺度压缩。它们描述最近
 不同尺度上的直接性、中心迁移和双向再交易，不识别当前腿，也不直接产生状态标签。
@@ -106,7 +108,8 @@ Phase 7  Market Context 与策略政策、风险和组合接口
 - ~~审计真实窗口上 `E/D/B` 的语义与互补性~~ → 开发观察已记入
   [phase1a-edb-development-audit.md](reports/phase1a-edb-development-audit.md)
   （非正式结论；`B` 有安静/剧烈盲区）；
-- 设计并实现扩张 `X` 等后续连续量，再与 `E/D/B` 做联合开发审计；
+- 审计 `X` 与 `E/D/B` 的联合语义、冗余和反例；`X` 当前只含活动背景、当日冲击和
+  clearance，不含 Retention 或通道事件；
 - 检查尺度关系、稳定性和连续表示是否足以支持状态压缩；
 - 在连续层出现明确语义缺口前，不引入结构术语或路径算法作为补救。
 

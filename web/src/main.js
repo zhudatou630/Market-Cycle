@@ -13,64 +13,114 @@ import { createIcons, icons } from "lucide";
 const API_URL = "/api/replay.json";
 const DEFAULT_RANGE_BARS = 252;
 const PLAYBACK_INTERVAL_MS = 240;
-const SERIES_COLORS = {
-  equal: "#087f6f",
-  midlong: "#576db5",
-  5: "#c4573d",
-  10: "#9c711f",
-  20: "#6b5b95",
-  55: "#2f6f8f",
-};
-const SERIES_LABELS = {
-  equal: "等权",
-  midlong: "中长期",
-  5: "5",
-  10: "10",
-  20: "20",
-  55: "55",
+const MIN_FEATURE_PANE_HEIGHT = 72;
+const MIN_PRICE_PANE_HEIGHT = 260;
+const DEFAULT_PANE_WEIGHTS = {
+  price: 5,
+  efficiency: 1,
+  direction: 1,
+  twoSidedness: 1,
+  expansion: 1,
+  clearance: 1,
 };
 const FEATURES = [
   {
     key: "efficiency",
     payloadKey: "efficiency",
-    fieldPrefix: "efficiency",
+    elementId: "efficiency",
     shortTitle: "E",
     title: "效率",
     unitBounded: true,
     legendId: "efficiency-legend",
+    defaultSeries: ["equal", "midlong"],
+    series: [
+      { key: "equal", field: "efficiency_equal", label: "等权", color: "#087f6f" },
+      { key: "midlong", field: "efficiency_midlong", label: "中长期", color: "#576db5" },
+      { key: "5", field: "efficiency_5", label: "5", color: "#c4573d" },
+      { key: "10", field: "efficiency_10", label: "10", color: "#9c711f" },
+      { key: "20", field: "efficiency_20", label: "20", color: "#6b5b95" },
+      { key: "55", field: "efficiency_55", label: "55", color: "#2f6f8f" },
+    ],
   },
   {
     key: "direction",
     payloadKey: "direction",
-    fieldPrefix: "direction",
+    elementId: "direction",
     shortTitle: "D",
     title: "方向",
     unitBounded: false,
     legendId: "direction-legend",
+    defaultSeries: ["equal", "midlong"],
+    series: [
+      { key: "equal", field: "direction_equal", label: "等权", color: "#087f6f" },
+      { key: "midlong", field: "direction_midlong", label: "中长期", color: "#576db5" },
+      { key: "5", field: "direction_5", label: "5", color: "#c4573d" },
+      { key: "10", field: "direction_10", label: "10", color: "#9c711f" },
+      { key: "20", field: "direction_20", label: "20", color: "#6b5b95" },
+      { key: "55", field: "direction_55", label: "55", color: "#2f6f8f" },
+    ],
   },
   {
     key: "twoSidedness",
     payloadKey: "twoSidedness",
-    fieldPrefix: "two_sidedness",
+    elementId: "two-sidedness",
     shortTitle: "B",
     title: "双向性",
     unitBounded: true,
     legendId: "two-sidedness-legend",
+    defaultSeries: ["equal", "midlong"],
+    series: [
+      { key: "equal", field: "two_sidedness_equal", label: "等权", color: "#087f6f" },
+      { key: "midlong", field: "two_sidedness_midlong", label: "中长期", color: "#576db5" },
+      { key: "5", field: "two_sidedness_5", label: "5", color: "#c4573d" },
+      { key: "10", field: "two_sidedness_10", label: "10", color: "#9c711f" },
+      { key: "20", field: "two_sidedness_20", label: "20", color: "#6b5b95" },
+      { key: "55", field: "two_sidedness_55", label: "55", color: "#2f6f8f" },
+    ],
+  },
+  {
+    key: "expansion",
+    payloadKey: "expansion",
+    elementId: "expansion",
+    shortTitle: "X",
+    title: "当日扩张",
+    unitBounded: false,
+    legendId: "expansion-legend",
+    defaultSeries: ["range", "close", "gap"],
+    series: [
+      { key: "range", field: "range", label: "范围", color: "#087f6f" },
+      { key: "close", field: "close", label: "收盘", color: "#576db5" },
+      { key: "gap", field: "gap", label: "Gap", color: "#c4573d" },
+    ],
+  },
+  {
+    key: "clearance",
+    payloadKey: "expansion",
+    elementId: "clearance",
+    shortTitle: "CL",
+    title: "旧区位置",
+    unitBounded: true,
+    legendId: "clearance-legend",
+    defaultSeries: ["up20", "down20", "up55", "down55"],
+    series: [
+      { key: "up20", field: "clearance_up_20", label: "上 20", color: "#087f6f" },
+      { key: "down20", field: "clearance_down_20", label: "下 20", color: "#c4573d" },
+      { key: "up55", field: "clearance_up_55", label: "上 55", color: "#2f6f8f" },
+      { key: "down55", field: "clearance_down_55", label: "下 55", color: "#9c711f" },
+    ],
   },
 ];
-const SERIES_KEYS = ["equal", "midlong", "5", "10", "20", "55"];
 const PRICE_SCALE_MODES = { log: PriceScaleMode.Logarithmic, linear: PriceScaleMode.Normal };
 
 const dom = {
   asOfInput: document.querySelector("#as-of-input"),
   asOfReadout: document.querySelector("#as-of-readout"),
+  chartBoard: document.querySelector(".chart-board"),
   datasetMeta: document.querySelector("#dataset-meta"),
   featureFrames: Object.fromEntries(
     FEATURES.map((feature) => [
       feature.key,
-      document.querySelector(
-        feature.key === "twoSidedness" ? "#two-sidedness-frame" : `#${feature.key}-frame`,
-      ),
+      document.querySelector(`#${feature.elementId}-frame`),
     ]),
   ),
   featureLegends: Object.fromEntries(
@@ -79,11 +129,7 @@ const dom = {
   featureTimeMarkers: Object.fromEntries(
     FEATURES.map((feature) => [
       feature.key,
-      document.querySelector(
-        feature.key === "twoSidedness"
-          ? "#two-sidedness-time-marker"
-          : `#${feature.key}-time-marker`,
-      ),
+      document.querySelector(`#${feature.elementId}-time-marker`),
     ]),
   ),
   indicatorScaleButtons: [...document.querySelectorAll("[data-indicator-scale]")],
@@ -95,6 +141,22 @@ const dom = {
   priceLegend: document.querySelector("#price-legend"),
   priceScaleButtons: [...document.querySelectorAll("[data-price-scale]")],
   priceTimeMarker: document.querySelector("#price-time-marker"),
+  paneElements: {
+    price: document.querySelector('[data-pane-key="price"]'),
+    ...Object.fromEntries(
+      FEATURES.map((feature) => [
+        feature.key,
+        document.querySelector(`[data-pane-key="${feature.key}"]`),
+      ]),
+    ),
+  },
+  paneResizers: Object.fromEntries(
+    FEATURES.map((feature) => [
+      feature.key,
+      document.querySelector(`[data-pane-resizer="${feature.key}"]`),
+    ]),
+  ),
+  paneToggleButtons: [...document.querySelectorAll("[data-pane-toggle]")],
   rangeButtons: [...document.querySelectorAll("[data-range-bars]")],
   snapshotPanel: document.querySelector("#snapshot-panel"),
   snapshotToggle: document.querySelector("#snapshot-toggle"),
@@ -111,11 +173,13 @@ const state = {
   currentIndicatorScale: "auto",
   currentPriceScale: "log",
   currentRangeBars: DEFAULT_RANGE_BARS,
+  paneWeights: { ...DEFAULT_PANE_WEIGHTS },
   payload: null,
   playbackTimer: null,
   snapshotOpen: true,
+  visiblePanes: Object.fromEntries(FEATURES.map((feature) => [feature.key, true])),
   visibleSeries: Object.fromEntries(
-    FEATURES.map((feature) => [feature.key, new Set(["equal", "midlong"])]),
+    FEATURES.map((feature) => [feature.key, new Set(feature.defaultSeries)]),
   ),
 };
 
@@ -174,13 +238,13 @@ function createTimeAnchor(chart) {
   return series;
 }
 
-function createFeatureSeries(chart) {
+function createFeatureSeries(chart, feature) {
   return Object.fromEntries(
-    SERIES_KEYS.map((key) => [
-      key,
+    feature.series.map((seriesConfig) => [
+      seriesConfig.key,
       chart.addSeries(LineSeries, {
-        color: SERIES_COLORS[key],
-        lineWidth: key === "equal" || key === "midlong" ? 2 : 1,
+        color: seriesConfig.color,
+        lineWidth: feature.defaultSeries.includes(seriesConfig.key) ? 2 : 1,
         lastValueVisible: false,
         priceLineVisible: false,
         crosshairMarkerVisible: false,
@@ -201,13 +265,11 @@ function createCharts() {
   });
   const featureCharts = Object.fromEntries(
     FEATURES.map((feature, index) => {
-      const elementId =
-        feature.key === "twoSidedness" ? "two-sidedness-chart" : `${feature.key}-chart`;
       const isBottom = index === FEATURES.length - 1;
       return [
         feature.key,
         createChart(
-          document.querySelector(`#${elementId}`),
+          document.querySelector(`#${feature.elementId}-chart`),
           chartOptions({ timeVisible: isBottom, fontSize: 10 }),
         ),
       ];
@@ -219,7 +281,10 @@ function createCharts() {
       FEATURES.map((feature) => [feature.key, createUnitBounds(featureCharts[feature.key])]),
     ),
     featureSeries: Object.fromEntries(
-      FEATURES.map((feature) => [feature.key, createFeatureSeries(featureCharts[feature.key])]),
+      FEATURES.map((feature) => [
+        feature.key,
+        createFeatureSeries(featureCharts[feature.key], feature),
+      ]),
     ),
     featureTimeAnchors: Object.fromEntries(
       FEATURES.map((feature) => [feature.key, createTimeAnchor(featureCharts[feature.key])]),
@@ -240,6 +305,119 @@ function createCharts() {
   subscribeCrosshairs(charts);
   bindChartFrames();
   return charts;
+}
+
+function visibleFeatureKeys() {
+  return FEATURES.filter((feature) => state.visiblePanes[feature.key]).map((feature) => feature.key);
+}
+
+function previousVisiblePaneKey(targetKey) {
+  const keys = ["price", ...FEATURES.map((feature) => feature.key)];
+  const targetIndex = keys.indexOf(targetKey);
+  for (let index = targetIndex - 1; index >= 0; index -= 1) {
+    const key = keys[index];
+    if (key === "price" || state.visiblePanes[key]) return key;
+  }
+  return null;
+}
+
+function minimumPaneHeight(key) {
+  return key === "price" ? MIN_PRICE_PANE_HEIGHT : MIN_FEATURE_PANE_HEIGHT;
+}
+
+function scheduleChartResize() {
+  window.requestAnimationFrame(() => {
+    window.dispatchEvent(new Event("resize"));
+    scheduleMarkers();
+  });
+}
+
+function applyPaneLayout() {
+  const visibleKeys = visibleFeatureKeys();
+  const lastVisibleKey = visibleKeys.at(-1) ?? "price";
+
+  for (const key of ["price", ...FEATURES.map((feature) => feature.key)]) {
+    dom.paneElements[key].classList.toggle("is-last-visible", key === lastVisibleKey);
+  }
+  for (const feature of FEATURES) {
+    const visible = state.visiblePanes[feature.key];
+    const pane = dom.paneElements[feature.key];
+    pane.hidden = !visible;
+    pane.style.setProperty("--pane-weight", String(state.paneWeights[feature.key]));
+    dom.paneResizers[feature.key].hidden = !visible;
+    const toggle = dom.paneToggleButtons.find((button) => button.dataset.paneToggle === feature.key);
+    toggle?.setAttribute("aria-pressed", String(visible));
+    state.charts?.features[feature.key].applyOptions({
+      timeScale: { visible: feature.key === lastVisibleKey },
+    });
+  }
+  dom.paneElements.price.style.setProperty("--pane-weight", String(state.paneWeights.price));
+  state.charts?.price.applyOptions({ timeScale: { visible: visibleKeys.length === 0 } });
+  scheduleChartResize();
+}
+
+function setPaneVisible(key, visible) {
+  state.visiblePanes[key] = visible;
+  applyPaneLayout();
+}
+
+function resizePane(targetKey, requestedDelta) {
+  const previousKey = previousVisiblePaneKey(targetKey);
+  if (!previousKey) return false;
+
+  const target = dom.paneElements[targetKey];
+  const previous = dom.paneElements[previousKey];
+  const targetHeight = target.getBoundingClientRect().height;
+  const previousHeight = previous.getBoundingClientRect().height;
+  const minDelta = minimumPaneHeight(previousKey) - previousHeight;
+  const maxDelta = targetHeight - minimumPaneHeight(targetKey);
+  const delta = Math.max(minDelta, Math.min(maxDelta, requestedDelta));
+  if (delta === 0) return false;
+
+  const pairWeight = state.paneWeights[previousKey] + state.paneWeights[targetKey];
+  const pairHeight = previousHeight + targetHeight;
+  state.paneWeights[targetKey] = pairWeight * ((targetHeight - delta) / pairHeight);
+  state.paneWeights[previousKey] = pairWeight - state.paneWeights[targetKey];
+  target.style.setProperty("--pane-weight", String(state.paneWeights[targetKey]));
+  previous.style.setProperty("--pane-weight", String(state.paneWeights[previousKey]));
+  dom.paneResizers[targetKey].setAttribute(
+    "aria-valuenow",
+    String(Math.round(targetHeight - delta)),
+  );
+  scheduleChartResize();
+  return true;
+}
+
+function bindPaneResizers() {
+  for (const feature of FEATURES) {
+    const resizer = dom.paneResizers[feature.key];
+    resizer.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 || window.matchMedia("(max-width: 980px)").matches) return;
+      event.preventDefault();
+      let lastY = event.clientY;
+      resizer.setPointerCapture(event.pointerId);
+      dom.chartBoard.classList.add("is-resizing");
+      const onMove = (moveEvent) => {
+        resizePane(feature.key, moveEvent.clientY - lastY);
+        lastY = moveEvent.clientY;
+      };
+      const onEnd = () => {
+        dom.chartBoard.classList.remove("is-resizing");
+        resizer.removeEventListener("pointermove", onMove);
+        resizer.removeEventListener("pointerup", onEnd);
+        resizer.removeEventListener("pointercancel", onEnd);
+      };
+      resizer.addEventListener("pointermove", onMove);
+      resizer.addEventListener("pointerup", onEnd);
+      resizer.addEventListener("pointercancel", onEnd);
+    });
+    resizer.addEventListener("keydown", (event) => {
+      if (window.matchMedia("(max-width: 980px)").matches) return;
+      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+      event.preventDefault();
+      resizePane(feature.key, event.key === "ArrowDown" ? 16 : -16);
+    });
+  }
 }
 
 function syncTimeScales(charts) {
@@ -338,7 +516,7 @@ function lastRecordThrough(records, date) {
 }
 
 function fieldName(feature, seriesKey) {
-  return `${feature.fieldPrefix}_${seriesKey}`;
+  return feature.series.find((seriesConfig) => seriesConfig.key === seriesKey)?.field;
 }
 
 function formatDecimal(value, digits = 3) {
@@ -351,6 +529,12 @@ function formatPrice(value) {
   return value === null || value === undefined || Number.isNaN(Number(value))
     ? "—"
     : Number(value).toFixed(2);
+}
+
+function formatPercent(value, digits = 2) {
+  return value === null || value === undefined || Number.isNaN(Number(value))
+    ? "—"
+    : `${(Number(value) * 100).toFixed(digits)}%`;
 }
 
 function percentChange(current, previous) {
@@ -378,12 +562,12 @@ function updateReplay({ resetRange = false } = {}) {
       visibleBars.map((bar) => ({ time: bar.time, value: 0 })),
     );
     const records = recordsThrough(payload[feature.payloadKey], date);
-    for (const seriesKey of SERIES_KEYS) {
-      const series = charts.featureSeries[feature.key][seriesKey];
+    for (const seriesConfig of feature.series) {
+      const series = charts.featureSeries[feature.key][seriesConfig.key];
       series.setData(
-        state.visibleSeries[feature.key].has(seriesKey)
+        state.visibleSeries[feature.key].has(seriesConfig.key)
           ? records
-              .map((row) => ({ time: row.time, value: row[fieldName(feature, seriesKey)] }))
+              .map((row) => ({ time: row.time, value: row[seriesConfig.field] }))
               .filter((row) => row.value !== null && row.value !== undefined)
           : [],
       );
@@ -434,12 +618,13 @@ function renderReadouts(time) {
   const efficiency = lastRecordThrough(state.payload.efficiency, time);
   const direction = lastRecordThrough(state.payload.direction, time);
   const twoSidedness = lastRecordThrough(state.payload.twoSidedness, time);
+  const expansion = lastRecordThrough(state.payload.expansion, time);
 
   renderPriceLegend(bar, previousBar, time);
-  renderFeatureLegend(FEATURES[0], efficiency);
-  renderFeatureLegend(FEATURES[1], direction);
-  renderFeatureLegend(FEATURES[2], twoSidedness);
-  renderSnapshot(time, bar, previousBar, efficiency, direction, twoSidedness);
+  for (const feature of FEATURES) {
+    renderFeatureLegend(feature, lastRecordThrough(state.payload[feature.payloadKey], time));
+  }
+  renderSnapshot(time, bar, previousBar, efficiency, direction, twoSidedness, expansion);
 }
 
 function previousDate(date) {
@@ -471,19 +656,19 @@ function renderFeatureLegend(feature, row) {
     `<span class="legend-title">${feature.shortTitle}</span>`,
     `<span class="legend-label">${feature.title}</span>`,
   ];
-  for (const seriesKey of SERIES_KEYS) {
-    const on = state.visibleSeries[feature.key].has(seriesKey);
-    const value = row ? row[fieldName(feature, seriesKey)] : null;
+  for (const seriesConfig of feature.series) {
+    const on = state.visibleSeries[feature.key].has(seriesConfig.key);
+    const value = row ? row[seriesConfig.field] : null;
     parts.push(`
       <button
         type="button"
         class="legend-item ${on ? "" : "is-off"}"
         data-feature="${feature.key}"
-        data-series="${seriesKey}"
-        title="切换 ${SERIES_LABELS[seriesKey]}"
+        data-series="${seriesConfig.key}"
+        title="切换 ${seriesConfig.label}"
       >
-        <span class="legend-swatch series-${seriesKey}"></span>
-        <span class="legend-label">${SERIES_LABELS[seriesKey]}</span>
+        <span class="legend-swatch" style="background:${seriesConfig.color}"></span>
+        <span class="legend-label">${seriesConfig.label}</span>
         <span class="legend-value">${on ? formatDecimal(value) : "—"}</span>
       </button>
     `);
@@ -491,32 +676,47 @@ function renderFeatureLegend(feature, row) {
   root.innerHTML = parts.join("");
 }
 
-function renderSnapshot(time, bar, previousBar, efficiency, direction, twoSidedness) {
+function renderSnapshot(time, bar, previousBar, efficiency, direction, twoSidedness, expansion) {
   const change = bar ? percentChange(bar.close, previousBar?.close) : null;
-  const values =
-    bar && efficiency && direction && twoSidedness
-      ? [
-          ["观察日", time, true],
-          ["O", formatPrice(bar.open)],
-          ["H", formatPrice(bar.high)],
-          ["L", formatPrice(bar.low)],
-          ["C", formatPrice(bar.close), true],
-          [
-            "涨跌",
-            change === null ? "—" : `${change >= 0 ? "+" : ""}${change.toFixed(2)}%`,
-          ],
-          ["E 等权", formatDecimal(efficiency.efficiency_equal), true],
-          ["E 中长期", formatDecimal(efficiency.efficiency_midlong)],
-          ["D 等权", formatDecimal(direction.direction_equal), true],
-          ["D 中长期", formatDecimal(direction.direction_midlong)],
-          ["D 一致·等权", formatDecimal(direction.direction_agreement_equal)],
-          ["B 等权", formatDecimal(twoSidedness.two_sidedness_equal), true],
-          ["B 中长期", formatDecimal(twoSidedness.two_sidedness_midlong)],
-        ]
-      : [
-          ["观察日", time, true],
-          ["状态", "窗口尚未齐套"],
-        ];
+  const values = bar
+    ? [
+        ["观察日", time, true],
+        ["O", formatPrice(bar.open)],
+        ["H", formatPrice(bar.high)],
+        ["L", formatPrice(bar.low)],
+        ["C", formatPrice(bar.close), true],
+        [
+          "涨跌",
+          change === null ? "—" : `${change >= 0 ? "+" : ""}${change.toFixed(2)}%`,
+        ],
+      ]
+    : [["观察日", time, true]];
+
+  if (expansion) {
+    values.push(
+      ["活动背景", formatPercent(expansion.activity_level)],
+      ["X 范围", formatDecimal(expansion.range), true],
+      ["X 收盘", formatDecimal(expansion.close)],
+      ["X Gap", formatDecimal(expansion.gap)],
+      ["X 转化", formatDecimal(expansion.share)],
+      ["清除 上20", formatDecimal(expansion.clearance_up_20)],
+      ["清除 下20", formatDecimal(expansion.clearance_down_20)],
+      ["清除 上55", formatDecimal(expansion.clearance_up_55)],
+      ["清除 下55", formatDecimal(expansion.clearance_down_55)],
+    );
+  }
+
+  if (efficiency && direction && twoSidedness) {
+    values.push(
+      ["E 等权", formatDecimal(efficiency.efficiency_equal), true],
+      ["E 中长期", formatDecimal(efficiency.efficiency_midlong)],
+      ["D 等权", formatDecimal(direction.direction_equal), true],
+      ["D 中长期", formatDecimal(direction.direction_midlong)],
+      ["D 一致·等权", formatDecimal(direction.direction_agreement_equal)],
+      ["B 等权", formatDecimal(twoSidedness.two_sidedness_equal), true],
+      ["B 中长期", formatDecimal(twoSidedness.two_sidedness_midlong)],
+    );
+  }
 
   dom.snapshotValues.replaceChildren(
     ...values.map(([label, value, primary]) => {
@@ -636,6 +836,12 @@ function bindControls() {
   for (const button of dom.indicatorScaleButtons) {
     button.addEventListener("click", () => setIndicatorScale(button.dataset.indicatorScale));
   }
+  for (const button of dom.paneToggleButtons) {
+    button.addEventListener("click", () => {
+      const key = button.dataset.paneToggle;
+      setPaneVisible(key, !state.visiblePanes[key]);
+    });
+  }
   for (const button of dom.rangeButtons) {
     button.addEventListener("click", () => {
       state.currentRangeBars = Number(button.dataset.rangeBars);
@@ -684,15 +890,17 @@ async function boot() {
     const response = await fetch(API_URL, { cache: "no-store" });
     if (!response.ok) throw new Error(`数据请求失败 (${response.status})`);
     state.payload = await response.json();
-    if (state.payload.schemaVersion !== "phase1a_continuous_replay_v2") {
+    if (state.payload.schemaVersion !== "phase1a_continuous_replay_v3") {
       throw new Error("回放数据版本不受当前页面支持");
     }
     state.charts = createCharts();
+    applyPaneLayout();
     state.asOfIndex = state.payload.bars.length - 1;
     dom.asOfInput.min = state.payload.meta.researchStart;
     dom.asOfInput.max = state.payload.meta.researchEnd;
     dom.datasetMeta.textContent = `${state.payload.meta.snapshotId} · ${state.payload.meta.researchStart} - ${state.payload.meta.researchEnd}`;
     bindControls();
+    bindPaneResizers();
     createIcons({ icons });
     setSnapshotOpen(true);
     updateReplay({ resetRange: true });

@@ -10,12 +10,13 @@ import pandas as pd
 from market_cycle.data import DEFAULT_SNAPSHOT_ID, get_research_bars
 from market_cycle.measurements import (
     CONTINUOUS_WINDOWS,
+    build_expansion_impulse,
     build_direction_drift,
     build_ohlc_min_efficiency,
     build_two_sidedness,
 )
 
-REPLAY_SCHEMA_VERSION = "phase1a_continuous_replay_v2"
+REPLAY_SCHEMA_VERSION = "phase1a_continuous_replay_v3"
 
 
 def _date(value: object) -> str | None:
@@ -67,6 +68,28 @@ def _feature_records(
     return records
 
 
+def _expansion_records(frame: pd.DataFrame, *, clearance_windows: Iterable[int]) -> list[dict[str, object]]:
+    records: list[dict[str, object]] = []
+    for row in frame.itertuples(index=False):
+        record: dict[str, object] = {
+            "time": _date(row.date),
+            "activity_level": _number(row.activity_level_atr_pct_prev),
+            "range": _number(row.expansion_range_atr_prev),
+            "close": _number(row.expansion_close_atr_prev),
+            "gap": _number(row.expansion_gap_prev_range_atr),
+            "share": _number(row.expansion_close_share),
+        }
+        for window in clearance_windows:
+            record[f"clearance_up_{window}"] = _number(
+                getattr(row, f"prior_range_clearance_up_{window}")
+            )
+            record[f"clearance_down_{window}"] = _number(
+                getattr(row, f"prior_range_clearance_down_{window}")
+            )
+        records.append(record)
+    return records
+
+
 def build_phase1a_continuous_replay(
     bars: pd.DataFrame,
     *,
@@ -76,14 +99,15 @@ def build_phase1a_continuous_replay(
 ) -> dict[str, object]:
     """Build the local replay bundle for Phase 1A continuous behavior only.
 
-    The bundle contains daily OHLC plus multi-scale efficiency, direction, and
-    two-sidedness values. Causal swing candidates live in
+    The bundle contains daily OHLC plus multi-scale efficiency, direction,
+    two-sidedness, and daily expansion values. Causal swing candidates live in
     ``market_cycle.structures`` and are intentionally excluded from the Phase 1A
     base-layer audit surface.
     """
     efficiency, efficiency_meta = build_ohlc_min_efficiency(bars, windows=windows)
     direction, direction_meta = build_direction_drift(bars, windows=windows)
     two_sidedness, two_sidedness_meta = build_two_sidedness(bars, windows=windows)
+    expansion, expansion_meta = build_expansion_impulse(bars)
 
     if list(windows) != list(CONTINUOUS_WINDOWS):
         # Custom window families are supported for unit tests, but they do not
@@ -185,12 +209,19 @@ def build_phase1a_continuous_replay(
             "efficiencyId": efficiency_meta.efficiency_id,
             "directionId": direction_meta.direction_id,
             "twoSidednessId": two_sidedness_meta.two_sidedness_id,
+            "expansionId": expansion_meta.expansion_id,
+            "clearanceId": expansion_meta.clearance_id,
+            "clearanceWindows": list(expansion_meta.clearance_windows),
             "windows": list(windows),
         },
         "bars": _bars_records(bars),
         "efficiency": efficiency_records,
         "direction": direction_records,
         "twoSidedness": two_sidedness_records,
+        "expansion": _expansion_records(
+            expansion,
+            clearance_windows=expansion_meta.clearance_windows,
+        ),
     }
 
 

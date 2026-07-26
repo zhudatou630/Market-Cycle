@@ -46,9 +46,17 @@
             <button type="button" data-price-scale="linear">Lin</button>
           </div>
 
-          <div class="segmented-control" aria-label="效率与双向性轴尺度">
+          <div class="segmented-control" aria-label="0 到 1 指标轴尺度">
             <button type="button" data-indicator-scale="auto" aria-pressed="true">Auto</button>
             <button type="button" data-indicator-scale="fixed">0-1</button>
+          </div>
+
+          <div class="pane-toggle-group" aria-label="副图显示控制">
+            <button type="button" data-pane-toggle="efficiency" aria-pressed="true" title="显示或隐藏效率 E">E</button>
+            <button type="button" data-pane-toggle="direction" aria-pressed="true" title="显示或隐藏方向 D">D</button>
+            <button type="button" data-pane-toggle="twoSidedness" aria-pressed="true" title="显示或隐藏双向性 B">B</button>
+            <button type="button" data-pane-toggle="expansion" aria-pressed="true" title="显示或隐藏当日扩张 X">X</button>
+            <button type="button" data-pane-toggle="clearance" aria-pressed="true" title="显示或隐藏旧区位置 CL">CL</button>
           </div>
 
           <button class="icon-button" id="snapshot-toggle" type="button" title="折叠/展开快照栏" aria-label="折叠快照栏" aria-pressed="true">
@@ -59,7 +67,7 @@
 
       <section class="workspace" aria-label="连续行为图表">
         <div class="chart-board">
-          <section class="pane price-pane" aria-label="SPX 日线">
+          <section class="pane price-pane" data-pane-key="price" aria-label="SPX 日线">
             <div class="pane-chart" id="price-frame">
               <div class="chart-legend" id="price-legend"></div>
               <div class="chart-surface" id="price-chart"></div>
@@ -67,7 +75,8 @@
             </div>
           </section>
 
-          <section class="pane feature-pane" aria-label="效率 E">
+          <div class="pane-resizer" data-pane-resizer="efficiency" role="separator" tabindex="0" aria-orientation="horizontal" aria-label="调整效率窗格高度"></div>
+          <section class="pane feature-pane" data-pane-key="efficiency" aria-label="效率 E">
             <div class="pane-chart" id="efficiency-frame">
               <div class="chart-legend" id="efficiency-legend" data-feature="efficiency"></div>
               <div class="chart-surface" id="efficiency-chart"></div>
@@ -75,7 +84,8 @@
             </div>
           </section>
 
-          <section class="pane feature-pane" aria-label="方向 D">
+          <div class="pane-resizer" data-pane-resizer="direction" role="separator" tabindex="0" aria-orientation="horizontal" aria-label="调整方向窗格高度"></div>
+          <section class="pane feature-pane" data-pane-key="direction" aria-label="方向 D">
             <div class="pane-chart" id="direction-frame">
               <div class="chart-legend" id="direction-legend" data-feature="direction"></div>
               <div class="chart-surface" id="direction-chart"></div>
@@ -83,11 +93,30 @@
             </div>
           </section>
 
-          <section class="pane feature-pane bottom-pane" aria-label="双向性 B">
+          <div class="pane-resizer" data-pane-resizer="twoSidedness" role="separator" tabindex="0" aria-orientation="horizontal" aria-label="调整双向性窗格高度"></div>
+          <section class="pane feature-pane" data-pane-key="twoSidedness" aria-label="双向性 B">
             <div class="pane-chart" id="two-sidedness-frame">
               <div class="chart-legend" id="two-sidedness-legend" data-feature="twoSidedness"></div>
               <div class="chart-surface" id="two-sidedness-chart"></div>
               <span class="sync-time-marker" id="two-sidedness-time-marker" aria-hidden="true"></span>
+            </div>
+          </section>
+
+          <div class="pane-resizer" data-pane-resizer="expansion" role="separator" tabindex="0" aria-orientation="horizontal" aria-label="调整当日扩张窗格高度"></div>
+          <section class="pane feature-pane" data-pane-key="expansion" aria-label="当日扩张 X">
+            <div class="pane-chart" id="expansion-frame">
+              <div class="chart-legend" id="expansion-legend" data-feature="expansion"></div>
+              <div class="chart-surface" id="expansion-chart"></div>
+              <span class="sync-time-marker" id="expansion-time-marker" aria-hidden="true"></span>
+            </div>
+          </section>
+
+          <div class="pane-resizer" data-pane-resizer="clearance" role="separator" tabindex="0" aria-orientation="horizontal" aria-label="调整旧区位置窗格高度"></div>
+          <section class="pane feature-pane" data-pane-key="clearance" aria-label="旧区位置 clearance">
+            <div class="pane-chart" id="clearance-frame">
+              <div class="chart-legend" id="clearance-legend" data-feature="clearance"></div>
+              <div class="chart-surface" id="clearance-chart"></div>
+              <span class="sync-time-marker" id="clearance-time-marker" aria-hidden="true"></span>
             </div>
           </section>
         </div>

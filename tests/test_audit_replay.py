@@ -22,13 +22,14 @@ def _bars() -> pd.DataFrame:
                 high,
                 low,
                 close,
+                2.5 / close,
                 0.012,
             )
         )
         price = close
     return pd.DataFrame(
         rows,
-        columns=["date", "open", "high", "low", "close", "atr_pct_14"],
+        columns=["date", "open", "high", "low", "close", "tr_pct", "atr_pct_14"],
     )
 
 
@@ -48,6 +49,8 @@ def test_continuous_replay_bundle_contains_only_base_layer_data():
     assert replay["efficiency"][0]["time"] is not None
     assert replay["direction"][0]["time"] is not None
     assert replay["twoSidedness"][0]["time"] is not None
+    assert replay["expansion"][0]["time"] is not None
+    assert replay["meta"]["expansionId"] is not None
     assert "paths" not in replay
 
 
@@ -64,12 +67,13 @@ def test_default_windows_include_composites():
                 price + 0.5,
                 price - 0.5,
                 price,
+                1.0 / price,
                 0.01,
             )
         )
     bars = pd.DataFrame(
         rows,
-        columns=["date", "open", "high", "low", "close", "atr_pct_14"],
+        columns=["date", "open", "high", "low", "close", "tr_pct", "atr_pct_14"],
     )
     replay = build_phase1a_continuous_replay(
         bars,
@@ -79,9 +83,12 @@ def test_default_windows_include_composites():
     last_efficiency = replay["efficiency"][-1]
     last_direction = replay["direction"][-1]
     last_two = replay["twoSidedness"][-1]
+    last_expansion = replay["expansion"][-1]
     assert last_efficiency["efficiency_equal"] is not None
     assert last_efficiency["efficiency_midlong"] is not None
     assert last_direction["direction_equal"] is not None
     assert last_direction["direction_midlong"] is not None
     assert last_two["two_sidedness_equal"] is not None
     assert last_two["two_sidedness_midlong"] is not None
+    assert last_expansion["range"] is not None
+    assert last_expansion["clearance_up_55"] is not None
