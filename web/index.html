@@ -15,6 +15,10 @@
         </div>
 
         <div class="chrome-controls" aria-label="回放控制">
+          <div class="segmented-control" aria-label="观察模式">
+            <button type="button" data-view-mode="continuous" aria-pressed="true">连续指标</button>
+            <button type="button" data-view-mode="coupling">组合观察</button>
+          </div>
           <div class="playback-controls">
             <button class="icon-button" id="previous-button" type="button" title="前一个交易日（左方向键）" aria-label="前一个交易日">
               <i data-lucide="chevron-left" aria-hidden="true"></i>
@@ -65,6 +69,34 @@
         </div>
       </header>
 
+      <section class="coupling-toolbar" id="coupling-toolbar" hidden aria-label="组合观察筛选">
+        <select id="regime-filter" aria-label="背景筛选">
+          <option value="">全部背景</option>
+          <option value="DIRECTIONAL_UP">方向向上</option>
+          <option value="DIRECTIONAL_DOWN">方向向下</option>
+          <option value="BALANCE_LIKE">偏盘整</option>
+          <option value="UNRESOLVED">看不清</option>
+        </select>
+        <select id="event-filter" aria-label="事件筛选">
+          <option value="">全部事件</option>
+          <option value="EXPANSION_UP">向上扩张</option>
+          <option value="EXPANSION_DOWN">向下扩张</option>
+          <option value="TURBULENT_SHOCK">剧烈无方向</option>
+        </select>
+        <label class="check-control"><input id="change-filter" type="checkbox" /> 只看背景变化</label>
+        <button class="icon-button" id="previous-match" type="button" title="上一个同类日期" aria-label="上一个同类日期"><i data-lucide="skip-back" aria-hidden="true"></i></button>
+        <button class="icon-button" id="next-match" type="button" title="下一个同类日期" aria-label="下一个同类日期"><i data-lucide="skip-forward" aria-hidden="true"></i></button>
+        <span class="control-divider" aria-hidden="true"></span>
+        <div class="segmented-control step-control" aria-label="逐步增加信息">
+          <button type="button" data-info-step="1">1 D+A</button>
+          <button type="button" data-info-step="2">2 +E</button>
+          <button type="button" data-info-step="3">3 +争夺</button>
+          <button type="button" data-info-step="4">4 +X</button>
+          <button type="button" data-info-step="5" aria-pressed="true">5 +位置</button>
+        </div>
+        <span class="match-count" id="match-count"></span>
+      </section>
+
       <section class="workspace" aria-label="连续行为图表">
         <div class="chart-board">
           <section class="pane price-pane" data-pane-key="price" aria-label="SPX 日线">
@@ -72,6 +104,15 @@
               <div class="chart-legend" id="price-legend"></div>
               <div class="chart-surface" id="price-chart"></div>
               <span class="sync-time-marker" id="price-time-marker" aria-hidden="true"></span>
+            </div>
+          </section>
+
+          <div class="pane-resizer coupling-only" data-pane-resizer="state" role="separator" aria-hidden="true"></div>
+          <section class="pane state-pane coupling-only" data-pane-key="state" aria-label="背景候选与事件" hidden>
+            <div class="pane-chart" id="state-frame">
+              <div class="chart-legend" id="state-legend"></div>
+              <div class="chart-surface" id="state-chart"></div>
+              <span class="sync-time-marker" id="state-time-marker" aria-hidden="true"></span>
             </div>
           </section>
 

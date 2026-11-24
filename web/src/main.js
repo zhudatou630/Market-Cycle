@@ -4,15 +4,24 @@ import {
   CandlestickSeries,
   ColorType,
   CrosshairMode,
+  HistogramSeries,
   LineSeries,
   PriceScaleMode,
   createChart,
+  createSeriesMarkers,
 } from "lightweight-charts";
 import { createIcons, icons } from "lucide";
 
 const API_URL = "/api/replay.json";
 const DEFAULT_RANGE_BARS = 252;
 const PLAYBACK_INTERVAL_MS = 240;
+const REGIME_COLORS = {
+  DIRECTIONAL_UP: "#087f6f",
+  DIRECTIONAL_DOWN: "#c4573d",
+  BALANCE_LIKE: "#9c711f",
+  UNRESOLVED: "#8a9692",
+};
+const FEATURE_STEPS = { direction: 1, efficiency: 2, twoSidedness: 3, expansion: 4, clearance: 5 };
 const MIN_FEATURE_PANE_HEIGHT = 72;
 const MIN_PRICE_PANE_HEIGHT = 260;
 const DEFAULT_PANE_WEIGHTS = {
@@ -40,6 +49,8 @@ const FEATURES = [
       { key: "10", field: "efficiency_10", label: "10", color: "#9c711f" },
       { key: "20", field: "efficiency_20", label: "20", color: "#6b5b95" },
       { key: "55", field: "efficiency_55", label: "55", color: "#2f6f8f" },
+      { key: "probe", field: "efficiency", label: "E 中长期", color: "#087f6f", payloadKey: "probe", coupling: true },
+      { key: "low", field: "efficiency_low", label: "低线", color: "#c4573d", payloadKey: "probe", coupling: true },
     ],
   },
   {
@@ -58,6 +69,10 @@ const FEATURES = [
       { key: "10", field: "direction_10", label: "10", color: "#9c711f" },
       { key: "20", field: "direction_20", label: "20", color: "#6b5b95" },
       { key: "55", field: "direction_55", label: "55", color: "#2f6f8f" },
+      { key: "abs", field: "abs_direction", label: "|D|", color: "#087f6f", payloadKey: "probe", coupling: true },
+      { key: "high", field: "direction_high", label: "方向高线", color: "#c4573d", payloadKey: "probe", coupling: true },
+      { key: "agreement", field: "agreement", label: "A", color: "#576db5", payloadKey: "probe", coupling: true },
+      { key: "agreementLow", field: "agreement_low", label: "A 低线", color: "#9c711f", payloadKey: "probe", coupling: true },
     ],
   },
   {
@@ -76,6 +91,10 @@ const FEATURES = [
       { key: "10", field: "two_sidedness_10", label: "10", color: "#9c711f" },
       { key: "20", field: "two_sidedness_20", label: "20", color: "#6b5b95" },
       { key: "55", field: "two_sidedness_55", label: "55", color: "#2f6f8f" },
+      { key: "entropy", field: "entropy", label: "Entropy 20", color: "#087f6f", payloadKey: "probe", coupling: true },
+      { key: "entropyHigh", field: "entropy_high", label: "Entropy 高线", color: "#c4573d", payloadKey: "probe", coupling: true },
+      { key: "overlap", field: "overlap", label: "Overlap 20", color: "#576db5", payloadKey: "probe", coupling: true },
+      { key: "overlapHigh", field: "overlap_high", label: "Overlap 高线", color: "#9c711f", payloadKey: "probe", coupling: true },
     ],
   },
   {
@@ -91,6 +110,14 @@ const FEATURES = [
       { key: "range", field: "range", label: "范围", color: "#087f6f" },
       { key: "close", field: "close", label: "收盘", color: "#576db5" },
       { key: "gap", field: "gap", label: "Gap", color: "#c4573d" },
+      { key: "probeRange", field: "range", label: "X range", color: "#087f6f", payloadKey: "probe", coupling: true },
+      { key: "rangeExtreme", field: "range_extreme", label: "极端线", color: "#c4573d", payloadKey: "probe", coupling: true },
+      { key: "absShare", field: "abs_share", label: "|share|", color: "#576db5", payloadKey: "probe", coupling: true },
+      { key: "shareLow", field: "share_low", label: "保留低线", color: "#8a9692", payloadKey: "probe", coupling: true },
+      { key: "shareHigh", field: "share_high", label: "保留高线", color: "#9c711f", payloadKey: "probe", coupling: true },
+      { key: "activity", field: "activity", label: "Activity", color: "#2f6f8f", payloadKey: "probe", coupling: true },
+      { key: "activityLow", field: "activity_low", label: "Activity 低线", color: "#8a9692", payloadKey: "probe", coupling: true },
+      { key: "activityHigh", field: "activity_high", label: "Activity 高线", color: "#6b5b95", payloadKey: "probe", coupling: true },
     ],
   },
   {
@@ -107,6 +134,10 @@ const FEATURES = [
       { key: "down20", field: "clearance_down_20", label: "下 20", color: "#c4573d" },
       { key: "up55", field: "clearance_up_55", label: "上 55", color: "#2f6f8f" },
       { key: "down55", field: "clearance_down_55", label: "下 55", color: "#9c711f" },
+      { key: "coverage", field: "coverage_20", label: "覆盖 20", color: "#087f6f", payloadKey: "probe", coupling: true },
+      { key: "coverageHigh", field: "coverage_high", label: "覆盖高线", color: "#c4573d", payloadKey: "probe", coupling: true },
+      { key: "position20", field: "position_20", label: "位置 20", color: "#576db5", payloadKey: "probe", coupling: true },
+      { key: "position55", field: "position_55", label: "位置 55", color: "#9c711f", payloadKey: "probe", coupling: true },
     ],
   },
 ];
@@ -116,6 +147,8 @@ const dom = {
   asOfInput: document.querySelector("#as-of-input"),
   asOfReadout: document.querySelector("#as-of-readout"),
   chartBoard: document.querySelector(".chart-board"),
+  changeFilter: document.querySelector("#change-filter"),
+  couplingToolbar: document.querySelector("#coupling-toolbar"),
   datasetMeta: document.querySelector("#dataset-meta"),
   featureFrames: Object.fromEntries(
     FEATURES.map((feature) => [
@@ -135,12 +168,21 @@ const dom = {
   indicatorScaleButtons: [...document.querySelectorAll("[data-indicator-scale]")],
   loading: document.querySelector("#loading-state"),
   nextButton: document.querySelector("#next-button"),
+  nextMatch: document.querySelector("#next-match"),
+  previousMatch: document.querySelector("#previous-match"),
+  regimeFilter: document.querySelector("#regime-filter"),
+  eventFilter: document.querySelector("#event-filter"),
+  matchCount: document.querySelector("#match-count"),
   playButton: document.querySelector("#play-button"),
   previousButton: document.querySelector("#previous-button"),
   priceFrame: document.querySelector("#price-frame"),
   priceLegend: document.querySelector("#price-legend"),
   priceScaleButtons: [...document.querySelectorAll("[data-price-scale]")],
   priceTimeMarker: document.querySelector("#price-time-marker"),
+  stateFrame: document.querySelector("#state-frame"),
+  stateLegend: document.querySelector("#state-legend"),
+  statePane: document.querySelector('[data-pane-key="state"]'),
+  stateTimeMarker: document.querySelector("#state-time-marker"),
   paneElements: {
     price: document.querySelector('[data-pane-key="price"]'),
     ...Object.fromEntries(
@@ -159,8 +201,11 @@ const dom = {
   paneToggleButtons: [...document.querySelectorAll("[data-pane-toggle]")],
   rangeButtons: [...document.querySelectorAll("[data-range-bars]")],
   snapshotPanel: document.querySelector("#snapshot-panel"),
+  snapshotHeading: document.querySelector("#snapshot-heading"),
   snapshotToggle: document.querySelector("#snapshot-toggle"),
   snapshotValues: document.querySelector("#snapshot-values"),
+  viewModeButtons: [...document.querySelectorAll("[data-view-mode]")],
+  infoStepButtons: [...document.querySelectorAll("[data-info-step]")],
   workspace: document.querySelector(".workspace"),
 };
 
@@ -173,6 +218,8 @@ const state = {
   currentIndicatorScale: "auto",
   currentPriceScale: "log",
   currentRangeBars: DEFAULT_RANGE_BARS,
+  infoStep: 5,
+  mode: "continuous",
   paneWeights: { ...DEFAULT_PANE_WEIGHTS },
   payload: null,
   playbackTimer: null,
@@ -275,6 +322,11 @@ function createCharts() {
       ];
     }),
   );
+  const stateChart = createChart(document.querySelector("#state-chart"), {
+    ...chartOptions({ timeVisible: false, fontSize: 10 }),
+    rightPriceScale: { visible: false },
+    grid: { vertLines: { color: "#eef2f0" }, horzLines: { visible: false } },
+  });
 
   const charts = {
     featureBounds: Object.fromEntries(
@@ -299,9 +351,18 @@ function createCharts() {
       wickUpColor: "#087f6f",
       wickDownColor: "#c4573d",
     }),
+    state: stateChart,
+    stateSeries: stateChart.addSeries(HistogramSeries, {
+      priceLineVisible: false,
+      lastValueVisible: false,
+      base: 0,
+    }),
+    stateTimeAnchor: createTimeAnchor(stateChart),
   };
 
-  syncTimeScales([price, ...Object.values(featureCharts)]);
+  charts.priceMarkers = createSeriesMarkers(charts.priceSeries, []);
+
+  syncTimeScales([price, stateChart, ...Object.values(featureCharts)]);
   subscribeCrosshairs(charts);
   bindChartFrames();
   return charts;
@@ -353,6 +414,8 @@ function applyPaneLayout() {
   }
   dom.paneElements.price.style.setProperty("--pane-weight", String(state.paneWeights.price));
   state.charts?.price.applyOptions({ timeScale: { visible: visibleKeys.length === 0 } });
+  dom.statePane.hidden = state.mode !== "coupling";
+  state.charts?.state.applyOptions({ timeScale: { visible: false } });
   scheduleChartResize();
 }
 
@@ -441,6 +504,7 @@ function syncTimeScales(charts) {
 function subscribeCrosshairs(charts) {
   const pairs = [
     ["price", charts.price],
+    ["state", charts.state],
     ...FEATURES.map((feature) => [feature.key, charts.features[feature.key]]),
   ];
   for (const [source, chart] of pairs) {
@@ -462,6 +526,7 @@ function subscribeCrosshairs(charts) {
 function bindChartFrames() {
   const pairs = [
     ["price", dom.priceFrame],
+    ["state", dom.stateFrame],
     ...FEATURES.map((feature) => [feature.key, dom.featureFrames[feature.key]]),
   ];
   for (const [source, frame] of pairs) {
@@ -556,13 +621,14 @@ function updateReplay({ resetRange = false } = {}) {
   const wasFollowingEnd = isFollowingAsOf();
   const visibleBars = payload.bars.slice(0, state.asOfIndex + 1);
   charts.priceSeries.setData(visibleBars);
+  charts.stateTimeAnchor.setData(visibleBars.map((bar) => ({ time: bar.time, value: 0 })));
 
   for (const feature of FEATURES) {
     charts.featureTimeAnchors[feature.key].setData(
       visibleBars.map((bar) => ({ time: bar.time, value: 0 })),
     );
-    const records = recordsThrough(payload[feature.payloadKey], date);
     for (const seriesConfig of feature.series) {
+      const records = recordsThrough(payload[seriesConfig.payloadKey ?? feature.payloadKey], date);
       const series = charts.featureSeries[feature.key][seriesConfig.key];
       series.setData(
         state.visibleSeries[feature.key].has(seriesConfig.key)
@@ -572,8 +638,10 @@ function updateReplay({ resetRange = false } = {}) {
           : [],
       );
     }
-    updateIndicatorBounds(charts.featureBounds[feature.key], records, date, feature.unitBounded);
+    const boundRecords = recordsThrough(payload[feature.payloadKey], date);
+    updateIndicatorBounds(charts.featureBounds[feature.key], boundRecords, date, feature.unitBounded);
   }
+  updateCouplingLayer(date);
 
   dom.asOfInput.value = date;
   dom.asOfReadout.textContent = date;
@@ -597,6 +665,135 @@ function updateIndicatorBounds(series, records, fallbackTime, unitBounded) {
   ]);
 }
 
+function probeMatches(row, index, records) {
+  if (row.status !== "ok") return false;
+  if (dom.regimeFilter.value && row.regime !== dom.regimeFilter.value) return false;
+  if (dom.eventFilter.value && !row.events.includes(dom.eventFilter.value)) return false;
+  if (dom.changeFilter.checked) {
+    const previous = records[index - 1];
+    if (!previous || previous.status !== "ok" || previous.regime === row.regime) return false;
+  }
+  return true;
+}
+
+function matchingProbeRecords(date = asOfDate()) {
+  const records = recordsThrough(state.payload.probe, date);
+  return records.filter((row, index) => probeMatches(row, index, records));
+}
+
+function updateCouplingLayer(date) {
+  const records = recordsThrough(state.payload.probe, date);
+  const hasFilter = Boolean(dom.regimeFilter.value || dom.eventFilter.value || dom.changeFilter.checked);
+  state.charts.stateSeries.setData(
+    records
+      .map((row, index) => ({
+        row,
+        index,
+      }))
+      .filter(({ row }) => row.status === "ok")
+      .map(({ row, index }) => ({
+          time: row.time,
+          value: 1,
+          color: !hasFilter || probeMatches(row, index, records) ? REGIME_COLORS[row.regime] : "#dfe5e2",
+        })),
+  );
+  const markers = [];
+  for (const row of records) {
+    if (row.status !== "ok") continue;
+    if (dom.eventFilter.value && !row.events.includes(dom.eventFilter.value)) continue;
+    for (const event of row.events) {
+      markers.push({
+        time: row.time,
+        position: event === "EXPANSION_DOWN" ? "aboveBar" : "belowBar",
+        color: event === "EXPANSION_UP" ? "#087f6f" : event === "EXPANSION_DOWN" ? "#c4573d" : "#9c711f",
+        shape: event === "EXPANSION_UP" ? "arrowUp" : event === "EXPANSION_DOWN" ? "arrowDown" : "circle",
+      });
+    }
+  }
+  state.charts.priceMarkers.setMarkers(state.mode === "coupling" ? markers : []);
+  const matches = matchingProbeRecords(date);
+  dom.matchCount.textContent = `${matches.length} 个匹配日`;
+  const current = lastRecordThrough(state.payload.probe, date);
+  dom.stateLegend.innerHTML = current?.status === "ok"
+    ? `<span class="legend-title">${regimeLabel(current.regime)}</span><span class="legend-label">${current.events.map(eventLabel).join(" · ") || "无事件"}</span>`
+    : '<span class="legend-title">未就绪</span>';
+}
+
+function regimeLabel(value) {
+  return {
+    DIRECTIONAL_UP: "方向向上",
+    DIRECTIONAL_DOWN: "方向向下",
+    BALANCE_LIKE: "偏盘整",
+    UNRESOLVED: "看不清",
+  }[value] ?? "未就绪";
+}
+
+function eventLabel(value) {
+  return {
+    EXPANSION_UP: "向上扩张",
+    EXPANSION_DOWN: "向下扩张",
+    TURBULENT_SHOCK: "剧烈无方向",
+  }[value] ?? value;
+}
+
+const EVIDENCE_LABELS = {
+  direction_strength_high: "方向力度高",
+  direction_strength_low: "方向力度低",
+  scale_consistent: "尺度一致",
+  path_directness_low: "路径不直接",
+  entropy_contest_high: "涨跌争夺高",
+  overlap_contest_high: "区域重叠高",
+  coverage_20_high: "20 日覆盖高",
+  range_extreme: "当日范围极端",
+  share_high: "收盘保留高",
+  share_low: "收盘保留低",
+};
+
+function renderCouplingSnapshot(time, probe) {
+  dom.snapshotHeading.textContent = "组合解释";
+  if (!probe || probe.status !== "ok") {
+    dom.snapshotValues.replaceChildren(snapshotItem("观察日", time, true), snapshotItem("状态", probe?.status ?? "未就绪"));
+    return;
+  }
+  const entries = Object.entries(probe.evidence);
+  const support = entries.filter(([, item]) => item.hit).map(([key]) => EVIDENCE_LABELS[key]);
+  const against = entries.filter(([, item]) => !item.hit).map(([key]) => EVIDENCE_LABELS[key]);
+  const values = [
+    ["观察日", time, true],
+    ["背景", regimeLabel(probe.regime), true],
+    ["当天事件", probe.events.map(eventLabel).join("、") || "无"],
+    ["命中证据", support.join("、") || "无"],
+    ["未命中", against.join("、") || "无"],
+    ["背景票数", `${probe.regime_hits}/${probe.regime_total}`],
+    ["尺度冲突", probe.scale_conflict ? probe.scale_conflict_types.join("、") : "无"],
+    ["路径直接性", probe.path_attribute],
+    ["涨跌争夺", probe.entropy_attribute],
+    ["区域重叠", probe.overlap_attribute],
+    ["活动水平", probe.activity_attribute],
+    ["20 日位置 / 覆盖", `${formatDecimal(probe.position_20)} / ${formatDecimal(probe.coverage_20)}`],
+    ["55 日位置 / 覆盖", `${formatDecimal(probe.position_55)} / ${formatDecimal(probe.coverage_55)}`],
+    ["Gap", `${probe.gap_direction} ${formatDecimal(probe.gap_size)}`],
+  ];
+  for (const [key, item] of entries) {
+    values.push([
+      EVIDENCE_LABELS[key],
+      `${formatDecimal(item.raw_value)} ${item.operator} ${formatDecimal(item.threshold)} · margin ${formatDecimal(item.margin)}`,
+    ]);
+  }
+  dom.snapshotValues.replaceChildren(...values.map(([label, value, primary]) => snapshotItem(label, value, primary)));
+}
+
+function snapshotItem(label, value, primary = false) {
+  const item = document.createElement("div");
+  const term = document.createElement("dt");
+  const definition = document.createElement("dd");
+  term.textContent = label;
+  definition.textContent = value ?? "—";
+  if (primary) item.classList.add("primary");
+  item.append(term, definition);
+  return item;
+}
+
 function isFollowingAsOf() {
   const range = state.charts?.price.timeScale().getVisibleLogicalRange();
   return !range || range.to >= state.asOfIndex - 0.25;
@@ -607,7 +804,7 @@ function setDefaultVisibleRange() {
     from: Math.max(0, state.asOfIndex - state.currentRangeBars),
     to: state.asOfIndex,
   };
-  for (const chart of [state.charts.price, ...Object.values(state.charts.features)]) {
+  for (const chart of [state.charts.price, state.charts.state, ...Object.values(state.charts.features)]) {
     chart.timeScale().setVisibleLogicalRange(range);
   }
 }
@@ -619,12 +816,14 @@ function renderReadouts(time) {
   const direction = lastRecordThrough(state.payload.direction, time);
   const twoSidedness = lastRecordThrough(state.payload.twoSidedness, time);
   const expansion = lastRecordThrough(state.payload.expansion, time);
+  const probe = lastRecordThrough(state.payload.probe, time);
 
   renderPriceLegend(bar, previousBar, time);
   for (const feature of FEATURES) {
-    renderFeatureLegend(feature, lastRecordThrough(state.payload[feature.payloadKey], time));
+    renderFeatureLegend(feature, time);
   }
-  renderSnapshot(time, bar, previousBar, efficiency, direction, twoSidedness, expansion);
+  if (state.mode === "coupling") renderCouplingSnapshot(time, probe);
+  else renderSnapshot(time, bar, previousBar, efficiency, direction, twoSidedness, expansion);
 }
 
 function previousDate(date) {
@@ -650,13 +849,20 @@ function renderPriceLegend(bar, previousBar, time) {
   `;
 }
 
-function renderFeatureLegend(feature, row) {
+function renderFeatureLegend(feature, time) {
   const root = dom.featureLegends[feature.key];
   const parts = [
     `<span class="legend-title">${feature.shortTitle}</span>`,
     `<span class="legend-label">${feature.title}</span>`,
   ];
-  for (const seriesConfig of feature.series) {
+  const visibleConfigs = feature.series.filter((seriesConfig) =>
+    state.mode === "coupling" ? seriesConfig.coupling : !seriesConfig.coupling,
+  );
+  for (const seriesConfig of visibleConfigs) {
+    const row = lastRecordThrough(
+      state.payload[seriesConfig.payloadKey ?? feature.payloadKey],
+      time,
+    );
     const on = state.visibleSeries[feature.key].has(seriesConfig.key);
     const value = row ? row[seriesConfig.field] : null;
     parts.push(`
@@ -677,6 +883,7 @@ function renderFeatureLegend(feature, row) {
 }
 
 function renderSnapshot(time, bar, previousBar, efficiency, direction, twoSidedness, expansion) {
+  dom.snapshotHeading.textContent = "当前读数";
   const change = bar ? percentChange(bar.close, previousBar?.close) : null;
   const values = bar
     ? [
@@ -739,6 +946,7 @@ function scheduleMarkers() {
 function renderSynchronizedTimeMarkers() {
   const targets = [
     ["price", state.charts?.price, dom.priceTimeMarker],
+    ["state", state.charts?.state, dom.stateTimeMarker],
     ...FEATURES.map((feature) => [
       feature.key,
       state.charts?.features[feature.key],
@@ -774,6 +982,56 @@ function setIndicatorScale(scale) {
     button.setAttribute("aria-pressed", String(button.dataset.indicatorScale === scale));
   }
   updateReplay();
+}
+
+function applyInformationStep() {
+  for (const feature of FEATURES) {
+    state.visibleSeries[feature.key] = new Set(
+      feature.series
+        .filter((series) =>
+          state.mode === "continuous"
+            ? feature.defaultSeries.includes(series.key)
+            : series.coupling && FEATURE_STEPS[feature.key] <= state.infoStep,
+        )
+        .map((series) => series.key),
+    );
+    state.visiblePanes[feature.key] =
+      state.mode === "continuous" || FEATURE_STEPS[feature.key] <= state.infoStep;
+  }
+  for (const button of dom.infoStepButtons) {
+    button.setAttribute("aria-pressed", String(Number(button.dataset.infoStep) === state.infoStep));
+  }
+}
+
+function setViewMode(mode) {
+  state.mode = mode;
+  document.querySelector(".app-shell").classList.toggle("coupling-mode", mode === "coupling");
+  dom.couplingToolbar.hidden = mode !== "coupling";
+  for (const button of dom.viewModeButtons) {
+    button.setAttribute("aria-pressed", String(button.dataset.viewMode === mode));
+  }
+  applyInformationStep();
+  applyPaneLayout();
+  updateReplay();
+  window.requestAnimationFrame(() => window.requestAnimationFrame(setDefaultVisibleRange));
+}
+
+function setInformationStep(step) {
+  state.infoStep = step;
+  applyInformationStep();
+  applyPaneLayout();
+  updateReplay();
+}
+
+function navigateMatch(direction) {
+  const records = state.payload.probe;
+  const matches = records.filter((row, index) => probeMatches(row, index, records));
+  const current = asOfDate();
+  const target = direction < 0
+    ? matches.filter((row) => row.time < current).at(-1)
+    : matches.find((row) => row.time > current);
+  if (!target) return;
+  setAsOfIndex(endIndex(state.payload.bars, target.time) - 1);
 }
 
 function setSnapshotOpen(open) {
@@ -852,6 +1110,17 @@ function bindControls() {
     });
   }
   dom.snapshotToggle.addEventListener("click", () => setSnapshotOpen(!state.snapshotOpen));
+  for (const button of dom.viewModeButtons) {
+    button.addEventListener("click", () => setViewMode(button.dataset.viewMode));
+  }
+  for (const button of dom.infoStepButtons) {
+    button.addEventListener("click", () => setInformationStep(Number(button.dataset.infoStep)));
+  }
+  for (const control of [dom.regimeFilter, dom.eventFilter, dom.changeFilter]) {
+    control.addEventListener("change", () => updateReplay());
+  }
+  dom.previousMatch.addEventListener("click", () => navigateMatch(-1));
+  dom.nextMatch.addEventListener("click", () => navigateMatch(1));
   for (const feature of FEATURES) {
     dom.featureLegends[feature.key].addEventListener("click", (event) => {
       const button = event.target.closest("[data-series]");
@@ -890,7 +1159,7 @@ async function boot() {
     const response = await fetch(API_URL, { cache: "no-store" });
     if (!response.ok) throw new Error(`数据请求失败 (${response.status})`);
     state.payload = await response.json();
-    if (state.payload.schemaVersion !== "phase1a_continuous_replay_v3") {
+    if (state.payload.schemaVersion !== "phase1a_continuous_replay_v4") {
       throw new Error("回放数据版本不受当前页面支持");
     }
     state.charts = createCharts();
@@ -907,6 +1176,7 @@ async function boot() {
     const observer = new ResizeObserver(scheduleMarkers);
     observer.observe(dom.priceFrame);
     for (const frame of Object.values(dom.featureFrames)) observer.observe(frame);
+    observer.observe(dom.stateFrame);
     dom.loading.classList.add("ready");
   } catch (error) {
     setLoading(error instanceof Error ? error.message : "图表加载失败", true);

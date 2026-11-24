@@ -26,7 +26,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -39,6 +40,10 @@ button {
   grid-template-rows: var(--chrome-height) minmax(0, 1fr);
   height: 100dvh;
   min-height: 0;
+}
+
+.app-shell.coupling-mode {
+  grid-template-rows: var(--chrome-height) 36px minmax(0, 1fr);
 }
 
 .chrome {
@@ -233,6 +238,50 @@ h2 {
   outline: none;
 }
 
+.coupling-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--board-border);
+  background: #eef3f0;
+}
+
+.coupling-toolbar[hidden] {
+  display: none;
+}
+
+.coupling-toolbar select {
+  height: 24px;
+  border: 1px solid #b7c2bd;
+  border-radius: 3px;
+  background: #fafcfb;
+  color: #33413e;
+  font-size: 11px;
+}
+
+.check-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #46524f;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.step-control button {
+  min-width: 52px;
+}
+
+.match-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--snapshot-width);
@@ -246,6 +295,10 @@ h2 {
 .workspace.snapshot-collapsed {
   grid-template-columns: minmax(0, 1fr) 0px;
   gap: 0;
+}
+
+.app-shell.coupling-mode .workspace:not(.snapshot-collapsed) {
+  grid-template-columns: minmax(0, 1fr) 280px;
 }
 
 .chart-board {
@@ -274,6 +327,11 @@ h2 {
 .price-pane {
   min-height: 260px;
   flex: var(--pane-weight, 5) 1 0px;
+}
+
+.state-pane {
+  min-height: 54px;
+  flex: 0 0 54px;
 }
 
 .pane.is-last-visible {
@@ -542,6 +600,14 @@ h2 {
     overflow: visible;
   }
 
+  .app-shell.coupling-mode {
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .coupling-toolbar {
+    flex-wrap: wrap;
+  }
+
   html,
   body {
     height: auto;
@@ -563,7 +629,8 @@ h2 {
   }
 
   .workspace,
-  .workspace.snapshot-collapsed {
+  .workspace.snapshot-collapsed,
+  .app-shell.coupling-mode .workspace:not(.snapshot-collapsed) {
     grid-template-columns: 1fr;
     height: auto;
     gap: 8px;

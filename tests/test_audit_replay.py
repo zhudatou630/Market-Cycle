@@ -51,6 +51,7 @@ def test_continuous_replay_bundle_contains_only_base_layer_data():
     assert replay["twoSidedness"][0]["time"] is not None
     assert replay["expansion"][0]["time"] is not None
     assert replay["meta"]["expansionId"] is not None
+    assert replay["probe"] == []
     assert "paths" not in replay
 
 
@@ -84,6 +85,7 @@ def test_default_windows_include_composites():
     last_direction = replay["direction"][-1]
     last_two = replay["twoSidedness"][-1]
     last_expansion = replay["expansion"][-1]
+    last_probe = replay["probe"][-1]
     assert last_efficiency["efficiency_equal"] is not None
     assert last_efficiency["efficiency_midlong"] is not None
     assert last_direction["direction_equal"] is not None
@@ -92,3 +94,8 @@ def test_default_windows_include_composites():
     assert last_two["two_sidedness_midlong"] is not None
     assert last_expansion["range"] is not None
     assert last_expansion["clearance_up_55"] is not None
+    assert replay["meta"]["probeVersion"] == "phase1a_state_coupling_probe_v0a"
+    assert replay["meta"]["quantileMethod"] == "linear"
+    assert last_probe["time"] is not None
+    assert last_probe["status"] == "insufficient_threshold_history"
+    assert last_probe["regime"] is None

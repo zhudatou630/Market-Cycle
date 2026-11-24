@@ -78,7 +78,9 @@ def serve(
             f"Chart assets not found: {static_dir}. Run `npm run build` in web first."
         )
 
-    payload = json.dumps(load_phase1a_continuous_replay(snapshot_id), separators=(",", ":")).encode("utf-8")
+    payload = json.dumps(
+        load_phase1a_continuous_replay(snapshot_id), separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")
     handler = _make_handler(replay_payload=payload, static_dir=static_dir)
     server = ThreadingHTTPServer((host, port), handler)
     print(f"Phase 1A continuous audit: http://{host}:{port}")

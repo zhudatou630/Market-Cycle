@@ -32,11 +32,15 @@ owner: current-research
   `structures` 下的未来结构候选，不属于 Phase 1A 基础层；
 - 本地连续行为审计页，用于 K 线、`E/D/B/X`、clearance 与严格 `as_of` 回放；
 - `E/D/B/X/clearance` 分项真实窗口开发审计（观察与反例，非正式结论）：
-  [phase1a-continuous-feature-development-audit.md](reports/phase1a-continuous-feature-development-audit.md)。
+  [phase1a-continuous-feature-development-audit.md](reports/phase1a-continuous-feature-development-audit.md)；
+- 状态耦合探针 `v0a` 的因果日表、组合观察页与三段顺序审计：硬背景候选暂不提升为
+  正式状态接口，连续向量、属性和当天事件保留进入后续选择；详见
+  [phase1a-state-coupling-probe-v0a-audit.md](reports/phase1a-state-coupling-probe-v0a-audit.md)。
 
 当前 `E/D/B/X/clearance v1` 是完整的**开发候选集合**，不是最终结论或已锁定的状态
-输入。各量已完成实现、性质测试、前缀回放与分项审计；是否保留、如何联合阅读及是否
-值得压缩，仍须按后续研究块独立检验。
+输入。各量已完成实现、性质测试、前缀回放、分项审计与第一次无记忆组合探针；`v0a`
+表明硬背景压缩尚不足以进入正式接口。各连续量及当天事件最终是否保留，仍须按后续选择块
+独立检验。
 
 当前操作位置是 **Phase 1A 开发块：基础连续行为表示**。依据 D-013，当前只研究
 固定窗口、多尺度、无需显式腿或摆动起点的连续行为量。当前不研究当前腿、回调、
@@ -47,8 +51,7 @@ Episode、通道、三推、双底或任何结构相对特征。扩张 `X` 的�
 
 尚未完成：
 
-- `X` 与 `E/D/B` 的真实窗口联合开发审计，确认活动背景、日度冲击和 clearance 的
-  语义、冗余与反例；
+- 连续候选集合的正式选择块，决定哪些字段和当天事件值得保留；
 - `ActivityShift`、通道事件和 Retention 是否值得作为后续独立研究对象；
 - `B` 是否改版或收缩职责（建议与 `X` 语义分工后决定）；
 - 连续行为层的选择块、锁定确认块和状态压缩判断；

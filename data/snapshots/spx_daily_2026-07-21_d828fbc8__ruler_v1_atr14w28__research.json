@@ -1,7 +1,7 @@
 {
   "artifact_id": "spx_daily_2026-07-21_d828fbc8__ruler_v1_atr14w28__research",
   "kind": "research_bars",
-  "created_at_utc": "2026-07-24T09:12:03Z",
+  "created_at_utc": "2026-08-17T07:03:45Z",
   "snapshot_id": "spx_daily_2026-07-21_d828fbc8",
   "source_snapshot_sha256": "d828fbc8a85d70a4de240b67de66e88d8b09767622a20743a04236f896373e9d",
   "sample_id": "spx_ohlc_main_1984",
