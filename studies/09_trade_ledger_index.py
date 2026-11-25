@@ -88,8 +88,15 @@ W_OK, W_TRUNC, W_SUSP, W_NOTRIG, W_LIMIT, W_NOOPEN = 0, 1, 2, 3, 4, 5
 def run_ledger(P: dict, sig_t: np.ndarray, sig_n: np.ndarray, side: int, *, k: float = 1.0, both: str = "cons",
                t1: str | None = None, entry: str = "stop", cost: float | np.ndarray = 0.0,
                max_hold: int = MAX_HOLD, exit_delay: int = EXIT_DELAY, use_open: bool = True,
-               buffer: int = IDX_BUFFER) -> dict:
+               buffer: int = IDX_BUFFER, tgt_px: np.ndarray | None = None) -> dict:
     """Simulate one bracket trade per signal bar (sig_t, sig_n).
+
+    entry="limit" (added for study 10; the "stop" / "open" paths are unchanged): buy limit at the signal-bar low, filled
+    if the next bar trades at least one tick (next bar's tick) below it, at the open if the open is already that far below;
+    stop / target are fixed prices limit ∓ planned risk (signal high − low), R unit = planned risk; tgt_px (real prices,
+    per trade) overrides the target. No limit-up / limit-down entry block. Entry-day truth table (T+0): stop only → stop;
+    target only → target if filled at the open, else cons holds / opt takes it; both → cons stop / opt target; an open
+    beyond the stop fills and stops at the open (subject to the sealed-limit check). T+1 ("forced"): stop only, both modes.
 
     P: wide arrays on the market calendar, NaN where the asset did not trade:
        O, H, L, C (prices), OK (open reliable), UP / DN (limit prices, NaN = no limit), TICK (price tick, 0 = none).
@@ -124,6 +131,7 @@ def run_ledger(P: dict, sig_t: np.ndarray, sig_n: np.ndarray, side: int, *, k: f
     outside = np.zeros(M, bool)
     frozen = np.zeros(M, bool)
     blocked = np.zeros(M, bool)
+    gstop = np.zeros(M, bool)
     ht = np.zeros(M)
     e = sig_t + 1
 
@@ -150,21 +158,46 @@ def run_ledger(P: dict, sig_t: np.ndarray, sig_n: np.ndarray, side: int, *, k: f
         f_ = o
         stp = o - (Hs - Ls)
         why[i0[trd & ~trig]] = W_NOOPEN
+    elif entry == "limit":
+        tick_e = TKf[e[i0] * N + sig_n[i0]]
+        level = Ls
+        rp = Hs - Ls
+        trig = trd & (l < level - 0.5 * tick_e)
+        gap = oke & (o < level - 0.5 * tick_e)
+        f_ = np.where(gap, o, level)
+        stp = level - rp
+        why[i0[trd & ~trig]] = W_NOTRIG
     else:
         raise ValueError(entry)
+    if tgt_px is not None and entry != "limit":
+        raise ValueError("tgt_px is only supported for limit entries")
     if entry == "stop":
         why[i0[trd & ~trig]] = W_NOTRIG
-    blk = trig & (f_ >= up - tol_e)
-    if side < 0:
-        blk &= c >= up - tol_e
+    if entry == "limit":
+        blk = np.zeros_like(trig)
+    else:
+        blk = trig & (f_ >= up - tol_e)
+        if side < 0:
+            blk &= c >= up - tol_e
     why[i0[blk]] = W_LIMIT
     blocked[i0[blk]] = True
     go = trig & ~blk
     ii = i0[go]
     f_, stp, gap = f_[go], stp[go], gap[go]
     o, h, l, c, dn, tol_e = o[go], h[go], l[go], c[go], dn[go], tol_e[go]
-    fill[ii], stop[ii], R[ii] = f_, stp, f_ - stp
-    tgt[ii] = f_ + k * (f_ - stp)
+    fill[ii], stop[ii] = f_, stp
+    if entry == "limit":
+        rp_g, lv_g = rp[go], level[go]
+        R[ii] = rp_g
+        if tgt_px is None:
+            tgt[ii] = lv_g + k * rp_g
+        else:
+            tp = np.asarray(tgt_px, float)[ii] * (1.0 if side > 0 else -1.0)
+            assert (tp > lv_g).all(), "explicit target must lie beyond the limit price"
+            tgt[ii] = tp
+    else:
+        R[ii] = f_ - stp
+        tgt[ii] = f_ + k * (f_ - stp)
     gap_in[ii] = gap
     last_c[ii] = c
     st[ii] = 1
@@ -173,7 +206,28 @@ def run_ledger(P: dict, sig_t: np.ndarray, sig_n: np.ndarray, side: int, *, k: f
     sh = l < stp + ht[ii]
     th = h >= tgt[ii]
     outside[ii] = sh
-    if t1 is None:
+    if entry == "limit":
+        thru = gap & (o < stp + ht[ii])  # opened beyond the stop: filled at the open, the attached stop fires at the open
+        gstop[ii] = thru
+        if t1 is None:
+            if both == "cons":
+                xs, xg = sh, ~sh & th & gap
+            else:
+                xs, xg = thru | (sh & ~th), ~thru & th
+            sel = ii[xg]
+            xpx[sel], kind[sel], xt[sel], st[sel] = tgt[sel], K_TARGET, e[sel], 3
+            px = np.where(thru, o, stp)[xs]
+            sealed = (px <= dn[xs] + tol_e[xs]) & (c[xs] <= dn[xs] + tol_e[xs])
+            sel = ii[xs]
+            okx = ~sealed
+            xpx[sel[okx]], kind[sel[okx]], xt[sel[okx]], st[sel[okx]] = px[okx], K_STOP, e[sel[okx]], 3
+            kind[sel[~okx]], st[sel[~okx]], deadline[sel[~okx]] = K_STOP, 2, e[sel[~okx]] + exit_delay
+        elif t1 == "forced":
+            sel = ii[sh]
+            kind[sel], st[sel], deadline[sel] = K_FORCED, 2, e[sel] + exit_delay
+        elif t1 != "ignore":
+            raise ValueError(t1)
+    elif t1 is None:
         if both == "cons":
             xs, xg = sh, ~sh & th
         else:
@@ -274,7 +328,7 @@ def run_ledger(P: dict, sig_t: np.ndarray, sig_n: np.ndarray, side: int, *, k: f
     sg = 1.0 if side > 0 else -1.0  # report real prices (short side was simulated on negated prices)
     return {"why": why, "filled": filled, "fill": sg * fill, "R": R, "xpx": sg * xpx, "gross": gross, "net": net,
             "win": filled & (kind == K_TARGET), "kind": kind, "hold": np.where(filled, xt - e, -1),
-            "gap_in": gap_in, "outside": outside, "frozen": frozen, "blocked": blocked}
+            "gap_in": gap_in, "outside": outside, "frozen": frozen, "blocked": blocked, "gstop": gstop}
 
 
 # ---------------------------------------------------------------------------
