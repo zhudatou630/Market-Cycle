@@ -138,6 +138,10 @@ def build_cache() -> dict:
                            tgt_px=fs["mid_real"][rows][sel], **kw)
         p = "L" if side > 0 else "S"
         cache[f"{p}_mid_sel"], cache[f"{p}_mid_filled"], cache[f"{p}_mid_net"] = sel, r["filled"], r["net"].astype(np.float32)
+        # exit kinds of the optimistic stop-entry run (09b cached only its win flags) for consistent failure rates
+        r = s09.run_ledger(P, tt, nn, side, cost=cost, buffer=STOCK_BUFFER, both="opt", **kw)
+        assert np.array_equal(r["win"], c09[f"{p}_opt_win"]), "stop-entry optimistic run differs from the 09b cache"
+        cache[f"{p}_sopt_kind"] = r["kind"]
     del P
     for side in (1, -1):
         p = "L" if side > 0 else "S"
@@ -393,7 +397,9 @@ def main_analysis() -> None:
             kind = src[f"{p}_main_kind"]
             failk = (kind == K_STOP) | (kind == K_FORCED)
             r["fail_ev"], r["fail_ctrl"], r["fail_rand"] = (float(failk[m].mean()) for m in (E & F, Cm & F, fit))
-            r["fail_ev_opt"], r["fail_ctrl_opt"], r["fail_rand_opt"] = (float(1 - win_o[m].mean()) for m in (E & F, Cm & F, fit))
+            ko = c[f"{p}_sopt_kind"]
+            failo = (ko == K_STOP) | (ko == K_FORCED)
+            r["fail_ev_opt"], r["fail_ctrl_opt"], r["fail_rand_opt"] = (float(failo[m].mean()) for m in (E & F, Cm & F, fit))
             bk = c[f"f{p}_back10"].astype(float)
             brk = c[f"f{p}_brk"]
             r["back_ev"], r["back_ctrl"], r["back_all"] = (float(np.nanmean(bk[m])) for m in (E, Cm, brk))
@@ -481,7 +487,7 @@ def render_stock(rows: list[dict]) -> list[str]:
                 L.append(f"  可交易标签（多头，绝对每笔净 R，每天最多计 30 只的加权均值）：保守 {f(r['abs_c'])}（t {f(r['abs_c_t'], 1)}），乐观 {f(r['abs_o'])}，"
                          f"2 倍成本 {f(r['abs_c2'])}（t {f(r['abs_c2_t'], 1)}）→ 【{r['label_trade']}】")
         else:
-            L.append("  失败率：账本快速失败（先碰止损，保守 ~ 1−乐观胜率）区间突破 / 趋势突破 / 随机单 | 10 天内收盘跌回箱体：区间 / 趋势 / 全部首次新高")
+            L.append("  失败率：账本快速失败（先碰止损，保守~乐观）区间突破 / 趋势突破 / 随机单 | 10 天内收盘跌回箱体：区间 / 趋势 / 全部首次新高")
             for r in [x for x in rows if x["q"] == q]:
                 L.append(f"  {r['label']:<14s} {r['fail_ev'] * 100:.1f}~{r['fail_ev_opt'] * 100:.1f}% / {r['fail_ctrl'] * 100:.1f}~{r['fail_ctrl_opt'] * 100:.1f}% / "
                          f"{r['fail_rand'] * 100:.1f}~{r['fail_rand_opt'] * 100:.1f}% | {r['back_ev'] * 100:.1f}% / {r['back_ctrl'] * 100:.1f}% / {r['back_all'] * 100:.1f}%")
