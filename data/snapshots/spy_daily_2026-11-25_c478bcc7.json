@@ -1,0 +1,50 @@
+{
+  "snapshot_id": "spy_daily_2026-11-25_c478bcc7",
+  "created_at_utc": "2026-11-25T15:56:35Z",
+  "snapshot_path": "data/snapshots/spy_daily_2026-11-25_c478bcc7.parquet",
+  "symbol": "SPY",
+  "frequency": "daily",
+  "columns": [
+    "date",
+    "open",
+    "high",
+    "low",
+    "close",
+    "adj_close",
+    "volume",
+    "dividends",
+    "stock_splits",
+    "capital_gains"
+  ],
+  "rows": 8515,
+  "date_start": "1993-01-29",
+  "date_end": "2026-11-25",
+  "sha256": "c478bcc75b9e4852ae410a64763557d89debdfacf89c6e4fd94d3fe227874411",
+  "byte_size": 406134,
+  "fetch_notes": {
+    "provider": "yfinance",
+    "yahoo_symbol": "SPY",
+    "auto_adjust": false,
+    "actions": true,
+    "note": "Raw unadjusted OHLCV + Dividends/Splits saved for deterministic local total-return calculation. Never overwrite."
+  },
+  "quality_summary": {
+    "duplicate_dates": 0,
+    "null_ohlcv_all": {
+      "open": 0,
+      "high": 0,
+      "low": 0,
+      "close": 0,
+      "volume": 0
+    },
+    "zero_vol_dev": 0,
+    "zero_vol_holdout": 0,
+    "zero_range_dev": 0,
+    "zero_range_holdout": 0,
+    "splits_nonzero_all": 0,
+    "div_events_dev": 109,
+    "dev_rows_1993_2019": 6780,
+    "holdout_rows_2020_plus": 1735
+  },
+  "immutability": "Do not overwrite this file. New fetches create a new snapshot id."
+}
